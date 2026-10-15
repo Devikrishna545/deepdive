@@ -15,10 +15,11 @@ Per claim:
    so a fragment of a denial ("…deny that prices will rise") cannot pass.
 1. **Precheck (code):** numbers in the claim missing from the cited text -> `precheck_hints`.
 2. **LLM judgement:** `VerdictOut` = label, reason, exact evidence quote, narrowed claim. Precheck
-   hints are passed as one `CHECK:` line to make the model stricter. `max_tokens=250`.
+   hints are passed as one `CHECK:` line to make the model stricter. `max_tokens=200` (reason <= 12 words, shortest quote).
 3. **Quote guard (code):** if the quote is not literally in the cited chunk text
-   (whitespace/quote-normalised, >= 12 chars), SUPPORTED/PARTIAL becomes UNSUPPORTED and
-   `guard_downgraded=True`.
+   (whitespace/quote-normalised, Markdown links and footnote marks ignored, >= 12 chars),
+   SUPPORTED/PARTIAL becomes UNSUPPORTED and `guard_downgraded=True`. A quote that skips text
+   with "..." passes only if every piece is in the same chunk, in order, and one piece is >= 12 chars.
 4. **Narrowing:** a PARTIAL claim's narrowed version is verified once; only SUPPORTED claims are kept.
 
 | Label | Action | Shown in report |
@@ -40,7 +41,10 @@ so the system is not checking itself. Prompt: `prompt.md`.
 - Ablation (`VERIFY_ENABLED=false`) uses `passthrough()`; it exists only for the eval comparison.
 - Every non-SUPPORTED verdict must carry a reason (shown to judges in the trail).
 - Contradiction detection (`app/core/contradictions.py`) reuses this model to judge pairs of
-  kept claims from different sources; disagreements are reported, never silently resolved.
+  kept claims from different sources; disagreements are reported. One exception, by code and
+  logged: in a premise-check sub-question, a blog/industry ("other" tier) claim that an official
+  source contradicts gets a code `CONTRADICTED` verdict (`model="code:official-source"`). News is
+  only flagged. Policy lives in `app/core/scoring.py::source_label`.
 
 ## Cost
 The verifier is the biggest cost line (one call per non-verbatim claim on the strongest model).

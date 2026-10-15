@@ -20,13 +20,21 @@ Prompts: `prompt.md` (plan), `gap_prompt.md` (loop-back). Model: `MODEL_PLANNER`
 
 ## Guardrails
 - The planner never answers the question and never states facts. It only writes sub-questions and queries.
-- Sub-questions must not overlap; each must be answerable from public, citable sources.
-- Include a premise-check sub-question when the question may rest on a false premise
-  (the eval set has false-premise questions).
+- Sub-questions must not overlap; each must be answerable from public, citable sources. Cover every
+  part the question asks for first; generic angles (stakeholders, risks) only when asked or slots remain.
+- The `plan` node caches plans (`CACHE_PLANS`, key = question, depth, model, prompt text, month), so a
+  prompt edit takes effect immediately but a repeated question reuses its plan.
+- When the question presupposes an event or decision that may not have happened, return it as
+  `premise` (+ `premise_queries`). Code then adds "Is it true that ...?" as the FIRST sub-question
+  (`checks_premise=True`) and keeps the total within the limit. Leave `premise` empty otherwise:
+  a needless check costs a sub-question slot.
 - `quick` depth = max 3 sub-questions. Never exceed `MAX_SUBQUESTIONS` (cost and latency).
 - Gap queries must differ from queries already tried (code also filters duplicates). If no new
   query is produced, the node stops looping on that sub-question; do not force a retry.
 - Pass the current date in the user message; do not hard-code years in the prompt.
+- Use only years and places the question states or implies (benchmark 3: an invented "in 2020"
+  sub-question made the drafter mis-date a true figure). No sub-question may assume the premise.
+  For laws and rules, one query names the official law or regulation.
 
 ## Failure modes to watch
 - Vague sub-questions ("Overview of X") produce vague claims and low coverage. Prefer measurable angles.

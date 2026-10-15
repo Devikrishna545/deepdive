@@ -91,6 +91,7 @@ pip install -r requirements-dev.txt
 cp .env.example .env                      # then add MESH_API_KEY
 python -m scripts.mesh_account            # FREE: balance, live prices of configured models, cost per run
 python -m scripts.smoke_mesh              # check every configured model works via Mesh (< 1 cent)
+python -m scripts.check_search            # FREE: web search works (Tavily if TAVILY_API_KEY, else DuckDuckGo)
 python run.py                             # web UI + API on http://127.0.0.1:8000 (API docs at /docs)
                                           # DEV_MODE=true: "Tokens (dev)" tab per run + /dev/usage page
 python -m scripts.cli "your question"     # one run from the terminal

@@ -23,7 +23,19 @@ Model: `MODEL_SYNTHESIZER`, temperature <= 0.3. Prompt: `prompt.md`.
 - Every sentence must list claim IDs. No new facts, numbers, causes, forecasts or advice.
 - A sub-question with no kept claims gets an empty section, not filler. Sections below the
   coverage bar are marked `limited_evidence` by code.
-- Disagreements are stated neutrally with both claims cited.
+- Disagreements are stated neutrally with both claims cited. Each claim arrives as `[clm_x] (tier)`
+  (official / academic / news / other, from `app/core/scoring.py::source_label`); on a conflict
+  the official claim leads.
+- Section headings are set by code from the sub-question text (`SectionOut` has no heading), so
+  no heading can assert anything unverified.
+- A sub-question marked `(PREMISE CHECK)` tests an assumption in the question; if its claims show
+  the assumption is false, the first summary sentence says so.
+- After the model writes, `app/core/key_claims.py::fill_key_claims` appends (max 2 per section) kept
+  claims that are not cited anywhere, whose figure (not a year) another kept claim from a different
+  passage also states, and whose figures are not already in the report. Each added sentence is the
+  claim text cited to that claim.
+- If the model's output stays invalid after one repair, `fallback_synthesis` builds the report
+  from the kept claims in code (noted in Limitations) instead of failing the run.
 - No investment, legal or tax advice, even when the question asks "should I…".
 - The citation check is code and has the final word: sentences it removes are logged in
   `dropped_sentences` and shown in the trail. Do not move this check into the prompt.

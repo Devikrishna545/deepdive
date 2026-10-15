@@ -23,6 +23,7 @@ Model: `MODEL_DRAFTER` (cheap), temperature 0. Prompt: `prompt.md`.
 - Keep numbers, units, periods and hedges exactly as the chunk states them. No rounding,
   no combining figures, no added causes or predictions.
 - Claims must be self-contained (name the subject and period; no "it", "this year").
+- Years, places and numbers come only from the finding, never from the sub-question wording.
 - Citations are filtered by code to chunks the drafter was given; a claim left with no
   citation is dropped before verification.
 - On a loop-back round, draft only the new round's findings (the node does this); never

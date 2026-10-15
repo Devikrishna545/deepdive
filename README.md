@@ -31,7 +31,7 @@ flowchart LR
 | **Researcher** | Searches the web (and your uploaded documents), fetches pages, stores every chunk with its source, extracts findings that cite chunk IDs | the chunks it fetched |
 | **Drafter** | Turns findings into atomic claims, one checkable fact each, citing chunks | findings + their chunks |
 | **Verifier** | Checks **one claim against only the text it cites**: supported, partial, unsupported or contradicted, with an exact evidence quote | one claim + its chunks |
-| **Synthesizer** | Writes the report from **verified claims only**; every sentence lists its claim IDs | kept claims |
+| **Synthesizer** | Writes the report from **verified claims only**; every sentence lists its claim IDs. Code then adds a verified figure the writer left out when two passages agree on it | kept claims |
 
 The coordinator is a LangGraph `StateGraph`: parallel research with `Send`, a conditional
 **coverage gate** that loops back to research when a sub-question has fewer than 2 verified
@@ -68,6 +68,7 @@ pip install -r requirements.txt
 cp .env.example .env                                     # add your MESH_API_KEY (rsk_...)
 python -m scripts.mesh_account                           # free: balance, model prices, cost per run
 python -m scripts.smoke_mesh                             # checks each configured model via Mesh (< 1 cent)
+python -m scripts.check_search                           # free: checks web search returns results
 python run.py                                            # http://127.0.0.1:8000
 ```
 
@@ -77,7 +78,10 @@ python run.py                                            # http://127.0.0.1:8000
 - API docs: http://127.0.0.1:8000/docs
 - No key yet? `python -m scripts.offline_demo` creates a demo run from fake data so you can see the UI.
 
-Optional: set `TAVILY_API_KEY` for better search (otherwise DuckDuckGo is used). Search is not an LLM call.
+Search: set `TAVILY_API_KEY` (free tier, no card) for reliable results. Without it DuckDuckGo is
+used, which often rate-limits and returns nothing. `python -m scripts.check_search` (free) tests
+search before you spend credits; a run that finds no sources at all stops before drafting.
+Search is not an LLM call.
 
 ## Self-evaluation
 
@@ -99,7 +103,14 @@ Groundedness is judged by a **different model** (`MODEL_JUDGE`) from the verifie
 python -m evaluation.run_eval --set verifier
 python -m evaluation.run_eval --set questions --limit 5 --max-usd 1.0
 python -m evaluation.run_eval --set questions --limit 5 --max-usd 1.0 --ablation
+python -m evaluation.run_benchmark            # 10-question regression benchmark, stops at $1.50
 ```
+
+The benchmark (`evaluation/data/benchmark.jsonl`) has reference answers checked against
+official sources, including two false-premise questions. For each key fact it reports the
+stage where the fact was lost (search, extraction, drafting, verification or writing), whether
+the cited passage really states it, any known-wrong claim that slipped through, and tokens and
+cost per agent.
 
 The question runner stops early at `--max-usd` or when the Mesh balance reaches the $1 floor, and records why.
 

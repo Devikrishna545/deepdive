@@ -82,3 +82,14 @@ def recency_factor(published_at: str | None, today: date | None = None) -> float
 def quality_score(domain: str, published_at: str | None, kind: str = "web") -> float:
     weight = FILE_WEIGHT if kind == "file" else tier_of(domain)[0]
     return round(weight * recency_factor(published_at), 3)
+
+
+_LABELS = {"filing": "official", "government": "official", "intergovernmental": "official",
+           "academic": "academic", "major news": "news"}
+
+
+def source_label(source) -> str:
+    """Short tier label for prompts: official / academic / news / other. Uploaded files count as official."""
+    if getattr(source, "kind", "web") == "file":
+        return "official"
+    return _LABELS.get(tier_of(source.domain or "")[1], "other")

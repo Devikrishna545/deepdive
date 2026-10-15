@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 
 from app.core.schemas import VerdictLabel
+from app.core.utils import new_id
 from app.db import repository as repo
 from app.services.run_service import execute_run
 from tests.fakes import FABRICATED
@@ -57,3 +58,16 @@ def test_ablation_mode_skips_verification(fake_world, monkeypatch):
     state = execute_run(run_id, "What are the main risks of the battery market?", "standard", [])
     assert all(v.label == VerdictLabel.SUPPORTED for v in state["verdicts"])
     assert FABRICATED in state["report"].markdown  # without the verifier, fabrication gets through
+
+
+def test_repeated_question_reuses_the_plan(fake_world):
+    q = "What are the main risks of the battery market?"
+    run_a, run_b = new_id("run"), new_id("run")
+    repo.create_run(run_a, q, "standard", [])
+    first = execute_run(run_a, q, "standard", [])
+    planner_calls = fake_world.calls.count("PlanOut")
+    repo.create_run(run_b, q, "standard", [])
+    second = execute_run(run_b, q, "standard", [])
+    assert fake_world.calls.count("PlanOut") == planner_calls  # no new planner call
+    assert [s.text for s in second["sub_questions"]] == [s.text for s in first["sub_questions"]]
+    assert {s.id for s in second["sub_questions"]}.isdisjoint({s.id for s in first["sub_questions"]})

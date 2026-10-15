@@ -95,7 +95,9 @@ def render_markdown(report: Report, claim_refs: dict[str, list[int]]) -> str:
         lines.append(" ".join(_cite(s, claim_refs) for s in section.sentences) or "_No verified claims._")
     if report.disagreements:
         lines += ["", "## Where sources disagree", ""]
-        lines += [f"- {c.explanation} (claims {c.claim_a} vs {c.claim_b})" for c in report.disagreements]
+        lines += [f"- {c.explanation} (claims {c.claim_a} vs {c.claim_b})"
+                  + (f"; {c.superseded_claim} removed: an official source contradicts it" if c.superseded_claim else "")
+                  for c in report.disagreements]
     if report.limitations:
         lines += ["", "## Limitations", ""] + [f"- {item}" for item in report.limitations]
     lines += ["", "## References", ""]

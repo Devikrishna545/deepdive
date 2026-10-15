@@ -128,7 +128,7 @@ function renderReport() {
   }
   if (r.disagreements.length) {
     article.append(el("h2", {}, "Where sources disagree"));
-    article.append(el("ul", { class: "list-disc pl-5" }, r.disagreements.map((d) => el("li", {}, d.explanation))));
+    article.append(el("ul", { class: "list-disc pl-5" }, r.disagreements.map((d) => el("li", {}, d.superseded_claim ? `${d.explanation} (the non-official claim was removed: an official source contradicts it)` : d.explanation))));
   }
   if (r.limitations.length) {
     article.append(el("h2", {}, "Limitations"));

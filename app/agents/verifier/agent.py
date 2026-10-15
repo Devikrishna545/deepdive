@@ -54,7 +54,7 @@ class VerifierAgent:
             user=f"CLAIM: {claim.text}{check}\n\nSOURCE:\n{blocks}",
             schema=VerdictOut,
             temperature=0.0,
-            max_tokens=250,
+            max_tokens=200,  # reply is a label, <=12-word reason and one short quote
         )
         verdict = Verdict(
             claim_id=claim.id,

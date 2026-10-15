@@ -32,8 +32,8 @@ from app.tools.search import SearchHit
 
 CHUNK_RE = re.compile(r"<CHUNK id=([^\s|>]+)[^>]*>\n(.*?)\n</CHUNK>", re.S)
 FINDING_RE = re.compile(r"^- (.*) \(chunks: ([^)]*)\)$", re.M)
-CLAIM_RE = re.compile(r"^\[(clm_[0-9a-f]+)\] (.*)$", re.M)
-SQ_RE = re.compile(r"^### (sq_[0-9a-f]+): ", re.M)
+CLAIM_RE = re.compile(r"^\[(clm_[0-9a-f]+)\] (?:\([a-z]+\) )?(.*)$", re.M)
+SQ_RE = re.compile(r"^### (sq_[0-9a-f]+)(?: \(PREMISE CHECK\))?: ", re.M)
 
 FABRICATED = "Battery prices will fall by 99 percent next year"
 
@@ -82,7 +82,7 @@ class FakeMesh:
             sq_ids = SQ_RE.findall(user)
             summary = [ReportSentence(text=t, claim_ids=[cid]) for cid, t in claims[:2]]
             summary.append(ReportSentence(text="An unsupported flourish with no citation.", claim_ids=[]))
-            sections = [SectionOut(sub_question_id=sq, heading=f"Section {i}", sentences=[]) for i, sq in enumerate(sq_ids)]
+            sections = [SectionOut(sub_question_id=sq, sentences=[]) for sq in sq_ids]
             for cid, text in claims:
                 sections[0].sentences.append(ReportSentence(text=text, claim_ids=[cid]))
             return SynthesisOut(executive_summary=summary, sections=sections, limitations=["Offline test data."])

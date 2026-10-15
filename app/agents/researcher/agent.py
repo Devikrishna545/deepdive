@@ -27,8 +27,8 @@ from app.tools.search import SearchHit, web_search
 
 log = logging.getLogger(__name__)
 
-CHUNKS_PER_PAGE = 2
-MAX_FINDINGS = 8
+CHUNKS_PER_PAGE = 3  # was 2: the first benchmark lost fetched facts at this cut
+MAX_FINDINGS = 10
 
 
 @dataclass
@@ -54,7 +54,7 @@ class ResearcherAgent:
         hits.sort(key=lambda h: quality_score(domain_of(h.url), h.published_at), reverse=True)
         return hits[: get_settings().max_pages_per_subquestion]
 
-    def _page_chunks(self, hit: SearchHit, sq: SubQuestion, result: ResearchResult) -> None:
+    def _page_chunks(self, hit: SearchHit, sq: SubQuestion, result: ResearchResult, focus: str) -> None:
         text, title, published = hit.content, hit.title, hit.published_at
         if not text:
             page = fetch_page(hit.url)
@@ -75,7 +75,7 @@ class ResearcherAgent:
             quality_score=quality_score(domain, published),
         )
         result.sources[source.id] = source
-        for piece in top_chunks(split_text(text), sq.text + " " + " ".join(sq.queries), CHUNKS_PER_PAGE):
+        for piece in top_chunks(split_text(text), focus, CHUNKS_PER_PAGE):
             chunk = Chunk(id=stable_id("chk", hit.url, piece[:200]), source_id=source.id, sub_question_id=sq.id, text=piece)
             result.chunks[chunk.id] = chunk
 
@@ -105,11 +105,13 @@ class ResearcherAgent:
         s = get_settings()
         result = ResearchResult(queries=list(queries))
         hits = self._collect_hits(queries)
-        parallel_map(lambda h: self._page_chunks(h, sq, result), hits, workers=s.max_concurrency)
+        # rank passages against the main question too, not only the sub-question wording
+        focus = f"{question} {sq.text} {' '.join(queries)}"
+        parallel_map(lambda h: self._page_chunks(h, sq, result, focus), hits, workers=s.max_concurrency)
         self._document_chunks(sq, file_ids, result)
 
         # Keep the most relevant chunks overall (token control).
-        ranked = sorted(result.chunks.values(), key=lambda c: relevance(c.text, sq.text), reverse=True)
+        ranked = sorted(result.chunks.values(), key=lambda c: relevance(c.text, focus), reverse=True)
         result.chunks = {c.id: c for c in ranked[: s.chunks_per_subquestion]}
         if not result.chunks:
             return result
@@ -123,7 +125,7 @@ class ResearcherAgent:
             user=f"MAIN QUESTION: {question}\nSUB-QUESTION: {sq.text}\n\nEVIDENCE:\n{blocks}",
             schema=FindingsOut,
             temperature=0.0,
-            max_tokens=700,
+            max_tokens=800,  # up to 10 findings
         )
         valid_ids = set(result.chunks)
         for f in out.findings[:MAX_FINDINGS]:

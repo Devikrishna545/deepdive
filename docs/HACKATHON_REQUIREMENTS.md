@@ -13,7 +13,7 @@ become demonstrable. "Where" is the file or command that proves it.
 | `requirements.txt` lists a web framework (FastAPI) and the LLM client used with Mesh (`openai`) | `requirements.txt` | Done |
 | `README.md`: what we built, how agents cooperate, how to run, key design decisions, self-evaluation results | `README.md`, `docs/DESIGN_DECISIONS.md`, eval block | Partly (results pending) |
 | `.gitignore` includes `.env`; no secrets committed | `.gitignore`, gitleaks in CI | Done |
-| Repo secrets `MESH_API_KEY` and `SUBMISSION_TOKEN` (Settings → Secrets and variables → Actions) | GitHub settings | To do |
+| Repo secrets `MESH_API_KEY` and `SUBMISSION_TOKEN` (Settings → Secrets and variables → Actions) | GitHub settings | Done |
 | Optional: demo video + deployed URL | — | Later |
 
 ## What to build (judged)

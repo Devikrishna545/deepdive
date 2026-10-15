@@ -11,7 +11,7 @@ from __future__ import annotations
 import re
 
 from app.core.schemas import Verdict, VerdictLabel
-from app.core.utils import normalize
+from app.core.utils import clean_markdown, normalize
 
 _NUMBER = re.compile(r"\d+(?:[.,]\d+)*")
 MIN_QUOTE_CHARS = 12
@@ -33,18 +33,40 @@ def precheck_claim(claim_text: str, source_texts: list[str]) -> list[str]:
     return hints
 
 
+_ELLIPSIS = re.compile(r"\s*(?:\.\.\.|…|\[\.\.\.\])\s*")
+MIN_PART_CHARS = 4  # ignore crumbs like "a" between two ellipses
+
+
+def _in_order(parts: list[str], text: str) -> bool:
+    pos = 0
+    for part in parts:
+        found = text.find(part, pos)
+        if found == -1:
+            return False
+        pos = found + len(part)
+    return True
+
+
 def quote_in_sources(quote: str, source_texts: list[str]) -> bool:
-    q = normalize(quote).strip(" .\"'")
-    if len(q) < MIN_QUOTE_CHARS:
+    """True when the quote's visible text is in one cited chunk.
+
+    Both sides are compared without Markdown (links, footnote marks). A quote that skips text
+    with "..." passes only if every piece is in the same chunk, in order, and one piece alone
+    is at least MIN_QUOTE_CHARS long, so "..." can't be used to stitch a claim from fragments.
+    """
+    q = normalize(clean_markdown(quote)).strip(" .\"'")
+    parts = [p.strip(" .\"'") for p in _ELLIPSIS.split(q)]
+    parts = [p for p in parts if len(p) >= MIN_PART_CHARS]
+    if not parts or max(len(p) for p in parts) < MIN_QUOTE_CHARS:
         return False
-    return any(q in normalize(t) for t in source_texts)
+    return any(_in_order(parts, normalize(clean_markdown(t))) for t in source_texts)
 
 
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+|\n+")
 
 
 def _sentences(text: str) -> set[str]:
-    return {normalize(s).strip(" .\"'") for s in _SENTENCE_SPLIT.split(text) if s.strip()}
+    return {normalize(s).strip(" .\"'") for s in _SENTENCE_SPLIT.split(clean_markdown(text)) if s.strip()}
 
 
 def verbatim_in_sources(claim_text: str, source_texts: list[str], min_chars: int = 25) -> bool:

@@ -11,12 +11,15 @@ from app.config import get_settings
 from app.core.citation_check import build_references, enforce_citations, render_markdown
 from app.core.contradictions import detect_contradictions
 from app.core.coverage import coverage_by_subquestion, find_gaps, kept_claims
-from app.core.schemas import VerdictLabel
-from app.core.utils import parallel_map
+from app.core.key_claims import fill_key_claims
+from app.core.schemas import SubQuestion, Verdict, VerdictLabel
+from app.core.scoring import source_label
+from app.core.utils import new_id, parallel_map
 from app.db import repository as repo
 from app.graph.state import ResearchState, ResearchTask
 from app.llm.mesh_client import get_mesh
 from app.llm.usage import run_usage
+from app.tools.search import NoEvidence, search_provider
 
 # Stop looping once a run has spent this share of RUN_BUDGET_USD, so it finishes with a
 # report instead of being cut off by the hard budget stop.
@@ -41,13 +44,21 @@ def _coverage(state: ResearchState):
 
 # ------------------------------------------------------------------ plan
 def plan(state: ResearchState) -> dict:
-    sub_questions = planner.plan(state["question"], state.get("depth", "standard"))
+    depth = state.get("depth", "standard")
+    key = planner.plan_key(state["question"], depth) if get_settings().cache_plans else None
+    cached = repo.cache_get(key) if key else None
+    if cached:  # same plan, fresh ids (ids are per run)
+        sub_questions = [SubQuestion(**(sq | {"id": new_id("sq")})) for sq in cached]
+    else:
+        sub_questions = planner.plan(state["question"], depth)
+        if key:
+            repo.cache_put(key, "plan", [sq.model_dump(exclude={"id"}) for sq in sub_questions])
     return {
         "sub_questions": sub_questions,
         "loops": {sq.id: 0 for sq in sub_questions},
         "round": 0,
         "_trail": {
-            "summary": f"planned {len(sub_questions)} sub-questions",
+            "summary": f"planned {len(sub_questions)} sub-questions" + (" (reused cached plan)" if cached else ""),
             "payload": {"sub_questions": [sq.model_dump() for sq in sub_questions]},
         },
     }
@@ -83,6 +94,11 @@ def research(task: ResearchTask) -> dict:
 def draft(state: ResearchState) -> dict:
     round_no = state.get("round", 0)
     chunks = state.get("chunks", {})
+    if round_no == 0 and not chunks:
+        # Nothing was retrieved for any sub-question: almost always a search outage or block.
+        # Stop now instead of paying for gap planning and an empty report.
+        raise NoEvidence(f"no sources found for any sub-question (search provider: {search_provider()}). "
+                         "Run `python -m scripts.check_search`; set TAVILY_API_KEY if DuckDuckGo is blocked.")
     jobs = []
     for sq in state["sub_questions"]:
         findings = [f for f in state.get("findings", []) if f.sub_question_id == sq.id and f.round == round_no]
@@ -197,28 +213,55 @@ def gap_plan(state: ResearchState) -> dict:
 def cross_check(state: ResearchState) -> dict:
     s = get_settings()
     kept = kept_claims(state.get("claims", []), state.get("verdicts", []))
+    chunks, sources = state.get("chunks", {}), state.get("sources", {})
+    premise_ids = {sq.id for sq in state.get("sub_questions", []) if sq.checks_premise}
     found = (
-        detect_contradictions(kept, state.get("chunks", {}), get_mesh(), s.model_verifier, s.contradiction_similarity)
+        detect_contradictions(kept, chunks, get_mesh(), s.model_verifier, s.contradiction_similarity,
+                              premise_ids, _claim_tiers(kept, chunks, sources))
         if s.verify_enabled
         else []
     )
+    # Code supersedes a blog/industry claim that an official source contradicts: the latest
+    # verdict wins, so this removes it from the report and shows the reason in the Claims tab.
+    by_id = {c.id: c for c in kept}
+    superseded = [
+        Verdict(claim_id=c.superseded_claim, label=VerdictLabel.CONTRADICTED, model="code:official-source",
+                reason=f"contradicted by an official source: {by_id[c.claim_a].text[:160]}")
+        for c in found if c.superseded_claim in by_id
+    ]
     return {
         "contradictions": found,
+        "verdicts": superseded,
         "_trail": {
-            "summary": f"{len(found)} disagreement(s) across sources",
+            "summary": f"{len(found)} disagreement(s) across sources"
+            + (f", {len(superseded)} claim(s) superseded by an official source" if superseded else ""),
             "payload": {"contradictions": [c.model_dump() for c in found]},
         },
     }
 
 
 # ------------------------------------------------------------------ synthesize
+def _claim_tiers(claims, chunks, sources) -> dict[str, str]:
+    """Best source tier behind each claim, as a short label for the synthesizer."""
+    rank = {"official": 0, "academic": 1, "news": 2, "other": 3}
+    out = {}
+    for c in claims:
+        labels = [source_label(sources[chunks[cid].source_id])
+                  for cid in c.cited_chunk_ids if cid in chunks and chunks[cid].source_id in sources]
+        out[c.id] = min(labels, key=rank.get) if labels else "other"
+    return out
+
+
 def synthesize(state: ResearchState) -> dict:
     kept = kept_claims(state.get("claims", []), state.get("verdicts", []))
+    tiers = _claim_tiers(kept, state.get("chunks", {}), state.get("sources", {}))
     report = synthesizer.synthesize(
-        state["question"], state["sub_questions"], kept, state.get("contradictions", []), _coverage(state)
+        state["question"], state["sub_questions"], kept, state.get("contradictions", []), _coverage(state), tiers
     )
+    report, added = fill_key_claims(report, kept)
     n = len(report.executive_summary) + sum(len(sec.sentences) for sec in report.sections)
-    return {"report": report, "_trail": {"summary": f"drafted report with {n} sentences from {len(kept)} claims"}}
+    note = f"; code added {added} verified key claim(s) the writer left out" if added else ""
+    return {"report": report, "_trail": {"summary": f"drafted report with {n} sentences from {len(kept)} claims{note}"}}
 
 
 # ------------------------------------------------------------------ citation check (code only)

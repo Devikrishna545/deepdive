@@ -30,5 +30,5 @@ Shared rules:
 8. Every behaviour change needs a test using `tests/fakes.py::FakeMesh`.
 9. Credits are scarce: pass `max_tokens` on every call, keep `prompt.md` short (~150 tokens),
    send only the inputs listed in the table above, and prefer a code check to an extra LLM call.
-   Current caps: planner 500 / gap 150, researcher 700, drafter 700, verifier 250,
+   Current caps: planner 500 / gap 150, researcher 800, drafter 700, verifier 200,
    synthesizer 1400, contradiction pairs 120.

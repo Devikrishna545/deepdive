@@ -136,10 +136,13 @@ class MeshClient:
         if model in self._thinking_models:
             max_tokens = max(max_tokens, THINKING_MIN_TOKENS)
         text, finish = self._complete(model, messages, temperature, max_tokens)
-        if not text.strip() and finish == "length" and max_tokens < THINKING_MIN_TOKENS:
-            log.info("%s used its whole token cap before answering (reasoning model); retrying with %s",
-                     model, THINKING_MIN_TOKENS)
-            self._thinking_models.add(model)
+        if finish == "length" and max_tokens < THINKING_MIN_TOKENS:
+            # Cut off at the cap: an empty or half-written JSON reply is useless, so one retry with
+            # a larger cap is cheaper than a repair round. Empty text = hidden reasoning used the cap.
+            if not text.strip():
+                self._thinking_models.add(model)
+            log.info("%s hit its %s-token cap (%s); retrying with %s", model, max_tokens,
+                     "no answer yet" if not text.strip() else "reply cut off", THINKING_MIN_TOKENS)
             text, finish = self._complete(model, messages, temperature, THINKING_MIN_TOKENS)
         return text
 
@@ -166,7 +169,8 @@ class MeshClient:
         try:
             return schema.model_validate(extract_json(reply))
         except (ValueError, ValidationError) as first_error:
-            log.warning("invalid JSON from %s, asking for a repair: %s", model, first_error)
+            log.warning("invalid JSON from %s, asking for a repair: %s | reply starts: %r", model,
+                        str(first_error)[:300], reply[:160])
             messages += [
                 {"role": "assistant", "content": reply},
                 {

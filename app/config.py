@@ -36,6 +36,7 @@ class Settings(BaseSettings):
 
     # Web search (not an LLM call)
     tavily_api_key: str = ""
+    tavily_search_depth: str = "basic"  # "basic" = 1 Tavily credit per search, "advanced" = 2
 
     # Pipeline knobs (each one trades tokens for coverage)
     max_subquestions: int = 4
@@ -44,10 +45,11 @@ class Settings(BaseSettings):
     min_distinct_domains: int = 2
     results_per_query: int = 4
     max_pages_per_subquestion: int = 4
-    chunks_per_subquestion: int = 8
+    chunks_per_subquestion: int = 10
     max_concurrency: int = 4
     fetch_timeout_s: float = 10.0
     verify_enabled: bool = True
+    cache_plans: bool = True  # reuse the plan for a repeated question (same model, prompt, month)
     contradiction_similarity: float = 0.85
 
     # Developer views (per-agent token usage). Set DEV_MODE=false for the demo / judges.

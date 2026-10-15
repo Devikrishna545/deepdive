@@ -63,8 +63,8 @@ flowchart LR
 | `verify` | Verifier (+ quote guard) | claims without a verdict | `verdicts` (+), narrowed child `claims` (+) |
 | `coverage_gate` | code (router) | claims, verdicts, chunks, sources, loops | routes `gaps` / `ok`; logs coverage |
 | `gap_plan` | Planner (gap prompt) | rejection reasons, coverage | `sub_questions` (new queries), `loops`, `round+1`, `gap_queries` |
-| `cross_check` | code + verifier model | kept claims | `contradictions` |
-| `synthesize` | Synthesizer | kept claims, contradictions, coverage | `report` |
+| `cross_check` | code + verifier model | kept claims, source tiers, premise-check sub-questions | `contradictions`; a code `CONTRADICTED` verdict for a blog/industry claim an official source contradicts |
+| `synthesize` | Synthesizer + code | kept claims, contradictions, coverage | `report`; code appends corroborated verified figures the writer skipped (`core/key_claims.py`) |
 | `cite_check` | code | report, kept claims | final `report` (+ references, markdown, dropped sentences) |
 
 Every node is wrapped by `traced(name)`: it writes `start`/`end`/`error` rows to `events` with
@@ -164,7 +164,7 @@ deepdive/
 │   │   ├── drafter/              agent.py, prompt.md, SKILL.md
 │   │   ├── verifier/             agent.py, prompt.md, SKILL.md
 │   │   └── synthesizer/          agent.py, prompt.md, SKILL.md
-│   ├── core/                     schemas, guards, coverage, citation_check, scoring, contradictions, utils
+│   ├── core/                     schemas, guards, coverage, citation_check, scoring, contradictions, key_claims, utils
 │   ├── llm/                      mesh_client.py, usage.py, billing.py, schema_hint.py
 │   ├── tools/                    search.py, fetch.py, chunker.py, documents.py
 │   ├── db/                       models.py, session.py, repository.py

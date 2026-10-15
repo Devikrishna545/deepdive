@@ -11,7 +11,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 # ---------------------------------------------------------------- domain models
 
@@ -21,6 +21,7 @@ class SubQuestion(BaseModel):
     text: str
     queries: list[str]
     rationale: str = ""
+    checks_premise: bool = False  # tests an assumption the question takes for granted
 
 
 class Source(BaseModel):
@@ -90,6 +91,7 @@ class Contradiction(BaseModel):
     claim_a: str
     claim_b: str
     explanation: str
+    superseded_claim: str | None = None  # removed by code: an official source contradicts it
 
 
 class ReportSentence(BaseModel):
@@ -136,6 +138,8 @@ class SubQuestionOut(BaseModel):
 
 class PlanOut(BaseModel):
     sub_questions: list[SubQuestionOut] = Field(min_length=1, max_length=8)
+    premise: str = ""  # an assumption in the question that may be false; "" if none
+    premise_queries: list[str] = Field(default_factory=list, max_length=3)
 
 
 class GapQueriesOut(BaseModel):
@@ -174,8 +178,10 @@ class PairJudgementOut(BaseModel):
 
 
 class SectionOut(BaseModel):
+    # No heading: code uses the sub-question text, so a model-written heading can never
+    # assert something unverified (the first benchmark had "Reasons Behind the EU's Decision
+    # to Ban Petrol Cars" on a false-premise question).
     sub_question_id: str
-    heading: str
     sentences: list[ReportSentence]
 
 
@@ -183,3 +189,10 @@ class SynthesisOut(BaseModel):
     executive_summary: list[ReportSentence]
     sections: list[SectionOut]
     limitations: list[str] = Field(default_factory=list)
+
+    @field_validator("executive_summary", "sections", mode="before")
+    @classmethod
+    def _drop_stray_items(cls, value):
+        # gpt-4o-mini sometimes leaks a fragment such as "limitations:[" into the sections list.
+        # Dropping non-objects keeps the rest of an otherwise valid report (seen in a live run).
+        return [v for v in value if isinstance(v, dict | BaseModel)] if isinstance(value, list) else value

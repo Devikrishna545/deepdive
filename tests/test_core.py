@@ -159,3 +159,169 @@ def test_thinking_model_empty_reply_gets_one_bigger_retry():
     # next call starts with the larger cap straight away (no wasted call)
     client.chat_json(model="google/gemini-2.5-flash", system="s", user="u", schema=GapQueriesOut, max_tokens=60)
     assert caps[-1] == THINKING_MIN_TOKENS and len(caps) == 3
+
+
+def test_cut_off_reply_is_retried_with_bigger_cap_not_repaired():
+    from app.core.schemas import GapQueriesOut
+    from app.llm.mesh_client import THINKING_MIN_TOKENS, MeshClient
+
+    client = MeshClient(api_key="rsk_test", base_url="http://unused")
+    caps = []
+
+    def fake_complete(model, messages, temperature, max_tokens):
+        caps.append(max_tokens)
+        if max_tokens < THINKING_MIN_TOKENS:
+            return '{"queries": ["battery rep', "length"  # half-written JSON at the cap
+        return '{"queries": ["battery report 2026"]}', "stop"
+
+    client._complete = fake_complete
+    out = client.chat_json(model="openai/gpt-4o-mini", system="s", user="u", schema=GapQueriesOut, max_tokens=60)
+    assert out.queries == ["battery report 2026"] and caps == [60, THINKING_MIN_TOKENS]
+    assert "openai/gpt-4o-mini" not in client._thinking_models  # it did answer, so not a thinking model
+
+
+def test_synthesis_drops_stray_fragments():
+    from app.core.schemas import SynthesisOut
+
+    out = SynthesisOut.model_validate({
+        "executive_summary": [{"text": "A.", "claim_ids": ["clm_1"]}],
+        "sections": [{"sub_question_id": "sq_1", "heading": "H", "sentences": []}, "limitations:["],
+        "limitations": ["x"],
+    })
+    assert len(out.sections) == 1
+
+
+def test_synthesizer_falls_back_to_verified_claims_when_output_stays_invalid():
+    from app.agents.synthesizer.agent import FALLBACK_NOTE, SynthesizerAgent
+    from app.core.schemas import Claim, SubQuestion
+    from app.llm import mesh_client
+
+    class BrokenMesh:
+        def chat_json(self, **kwargs):
+            raise mesh_client.MeshError("openai/gpt-4o-mini did not return valid SynthesisOut")
+
+    mesh_client.set_mesh(BrokenMesh())
+    sq = SubQuestion(id="sq_1", text="Rates?", queries=["q"])
+    kept = [Claim(id="clm_1", sub_question_id="sq_1", text="The rate is 9%.", cited_chunk_ids=["chk_1"])]
+    report = SynthesizerAgent().synthesize("Q?", [sq], kept, [], {})
+    assert report.sections[0].sentences[0].claim_ids == ["clm_1"]
+    assert report.executive_summary[0].text == "The rate is 9%."
+    assert report.limitations == [FALLBACK_NOTE]
+
+
+def test_quote_guard_ignores_markdown_links_and_footnotes():
+    from app.core.guards import quote_in_sources
+
+    chunk = ("UAE Corporate Tax is a direct federal tax introduced under "
+             "[Federal Decree-Law No. 47 of 2022](https://mof.gov.ae/law_(1).pdf) on the Taxation.[[8]](#cite_note-8)")
+    assert quote_in_sources("introduced under Federal Decree-Law No. 47 of 2022 on the Taxation", [chunk])
+    assert not quote_in_sources("introduced under Federal Decree-Law No. 48 of 2022", [chunk])
+
+
+def test_quote_guard_accepts_elided_quote_only_in_order_in_one_chunk():
+    from app.core.guards import quote_in_sources
+
+    chunk = 'The rate will be 9% for income above AED 375,000, "to support small businesses," the ministry said.'
+    assert quote_in_sources("The rate will be 9% for income above AED 375,000... the ministry said", [chunk])
+    assert not quote_in_sources("the ministry said ... The rate will be 9% for income", [chunk])  # wrong order
+    assert not quote_in_sources("The rate will be 9%... the ministry said", ["The rate will be 9%.", "the ministry said"])
+    assert not quote_in_sources("rate ... said", [chunk])  # no piece is long enough to prove anything
+
+
+def test_chunks_are_cleaned_and_figures_rank_higher():
+    from app.tools.chunker import relevance, split_text
+
+    page = "Intro text about corporate tax in the UAE. " * 3 + "\n[Read the law](https://x.gov/a.pdf) here, see [3]."
+    assert all("http" not in c and "[3]" not in c for c in split_text(page))
+    q = "corporate tax rate UAE"
+    assert relevance("The corporate tax rate in the UAE is 9%.", q) > relevance("The corporate tax rate in the UAE is low.", q)
+
+
+def test_source_labels():
+    from app.core.schemas import Source
+    from app.core.scoring import source_label
+
+    assert source_label(Source(id="s", url="u", domain="climate.ec.europa.eu")) == "official"
+    assert source_label(Source(id="s", url="u", domain="bbc.com")) == "news"
+    assert source_label(Source(id="s", url="u", domain="electrifying.com")) == "other"
+    assert source_label(Source(id="s", url="file://a.pdf", domain="a.pdf", kind="file")) == "official"
+
+
+def test_planner_puts_a_premise_check_first_within_the_limit():
+    from app.agents.planner.agent import PlannerAgent
+    from app.core.schemas import PlanOut, SubQuestionOut
+    from app.llm import mesh_client
+
+    class PremiseMesh:
+        def chat_json(self, **kwargs):
+            return PlanOut(sub_questions=[SubQuestionOut(text=f"Why {i}", queries=["q"]) for i in range(3)],
+                           premise="The EU banned petrol cars in 2024.", premise_queries=["EU petrol car ban 2024 status"])
+
+    mesh_client.set_mesh(PremiseMesh())
+    plan = PlannerAgent().plan("Why did the EU ban petrol cars in 2024?", depth="quick")
+    assert len(plan) == 3 and plan[0].checks_premise
+    assert plan[0].text == "Is it true that the EU banned petrol cars in 2024?"
+    assert plan[0].queries == ["EU petrol car ban 2024 status"] and not plan[1].checks_premise
+
+
+def test_synthesizer_headings_come_from_code_and_claims_carry_tiers():
+    from app.agents.synthesizer.agent import SynthesizerAgent
+    from app.core.schemas import Claim, ReportSentence, SectionOut, SubQuestion, SynthesisOut
+    from app.llm import mesh_client
+
+    seen = {}
+
+    class Mesh:
+        def chat_json(self, **kwargs):
+            seen["user"] = kwargs["user"]
+            return SynthesisOut(executive_summary=[ReportSentence(text="No ban in 2024.", claim_ids=["clm_1|official"])],
+                                sections=[SectionOut(sub_question_id="sq_1", sentences=[])])
+
+    mesh_client.set_mesh(Mesh())
+    sq = SubQuestion(id="sq_1", text="Is it true that the EU banned petrol cars in 2024?", queries=["q"], checks_premise=True)
+    kept = [Claim(id="clm_1", sub_question_id="sq_1", text="The 100% target applies from 2035.", cited_chunk_ids=["c"])]
+    report = SynthesizerAgent().synthesize("Why did the EU ban petrol cars in 2024?", [sq], kept, [], {}, {"clm_1": "official"})
+    assert report.sections[0].heading == sq.text
+    assert report.executive_summary[0].claim_ids == ["clm_1"]  # decoration copied by the model is stripped
+    assert "### sq_1 (PREMISE CHECK):" in seen["user"] and "[clm_1] (official)" in seen["user"]
+
+
+def test_premise_claims_are_checked_against_official_sources():
+    from app.core.contradictions import detect_contradictions
+    from app.core.schemas import Chunk, Claim, PairJudgementOut
+
+    chunks = {f"c{i}": Chunk(id=f"c{i}", source_id=f"s{i}", sub_question_id="sq_p", text="t") for i in range(3)}
+    official = Claim(id="clm_off", sub_question_id="sq_p", text="From 2035 all new cars must be zero-emission.", cited_chunk_ids=["c0"])
+    blog = Claim(id="clm_blog", sub_question_id="sq_p", text="The EU abandoned its 2035 ban.", cited_chunk_ids=["c1"])
+    news = Claim(id="clm_news", sub_question_id="sq_p", text="The Commission proposed a 90% target.", cited_chunk_ids=["c2"])
+    judged = []
+
+    class Mesh:
+        def embed(self, texts):
+            return [[1.0, 0.2 * i] for i, _ in enumerate(texts)]
+
+        def chat_json(self, **kw):
+            judged.append(kw["user"])
+            return PairJudgementOut(relation="disagree", explanation="status differs")
+
+    found = detect_contradictions([official, blog, news], chunks, Mesh(), "m", 0.99,
+                                  premise_sq_ids={"sq_p"},
+                                  tiers={"clm_off": "official", "clm_blog": "other", "clm_news": "news"})
+    assert len(judged) == 2  # official vs blog, official vs news; never blog vs news
+    superseded = {c.claim_b: c.superseded_claim for c in found}
+    assert superseded == {"clm_blog": "clm_blog", "clm_news": None}  # news is flagged, never removed
+    assert all(c.claim_a == "clm_off" for c in found)
+
+
+def test_typed_check_unchanged_outside_premise_questions():
+    from app.core.contradictions import detect_contradictions
+    from app.core.schemas import Chunk, Claim
+
+    chunks = {"c0": Chunk(id="c0", source_id="s0", sub_question_id="sq", text="t")}
+    plain = [Claim(id=f"clm_{i}", sub_question_id="sq", text="x", cited_chunk_ids=["c0"]) for i in range(3)]
+
+    class Mesh:
+        def embed(self, texts):
+            raise AssertionError("no embedding needed: fact claims outside premise checks are skipped")
+
+    assert detect_contradictions(plain, chunks, Mesh(), "m", 0.8) == []
