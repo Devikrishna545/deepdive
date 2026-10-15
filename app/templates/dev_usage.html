@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}DeepDive — token usage (dev){% endblock %}
+{% block content %}
+<section>
+  <h1 class="text-2xl font-semibold">Token usage by agent</h1>
+  <p class="mt-2 text-slate max-w-3xl">
+    Developer view of Mesh tokens per agent. Use it while testing to see which agent drives cost
+    and whether a prompt or limit change helped. Hidden when <code>DEV_MODE=false</code>.
+  </p>
+
+  <h2 class="mt-8 text-lg font-semibold">Average per finished run</h2>
+  <p id="avg-note" class="text-sm text-slate"></p>
+  <div class="mt-3" id="legend"></div>
+  <div class="mt-2 overflow-x-auto" id="avg"></div>
+
+  <h2 class="mt-10 text-lg font-semibold">Recent runs</h2>
+  <p class="text-sm text-slate">Input / output tokens per agent. Open a run for the per-step view.</p>
+  <div class="mt-3 overflow-x-auto" id="recent"></div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', path='js/tokens.js') }}"></script>
+<script>
+  (async () => {
+    const box = document.getElementById("recent");
+    try {
+      const data = await api("/api/dev/usage?limit=15");
+      document.getElementById("avg-note").textContent = data.done_runs
+        ? `Based on ${data.done_runs} finished run(s) below.` : "No finished runs yet. Start one from New research.";
+      document.getElementById("legend").replaceChildren(tokenLegend());
+      document.getElementById("avg").replaceChildren(agentTokenTable(data.average_per_done_run, { showModels: false }));
+      const agents = ["planner", "researcher", "drafter", "verifier", "synthesizer"];
+      box.replaceChildren(el("table", { class: "tok-table" },
+        el("thead", {}, el("tr", {}, ["Run", "Status", ...agents, "Total in / out", "Cost"].map((h, i) => el("th", { class: i >= 2 ? "num" : "" }, h)))),
+        el("tbody", {}, data.runs.map((r) => el("tr", {},
+          el("td", { class: "max-w-xs truncate" }, el("a", { href: `/runs/${r.run_id}`, class: "text-primary hover:underline" }, r.question)),
+          el("td", {}, `${r.status} · ${r.depth}`),
+          ...agents.map((name) => {
+            const a = r.agents.find((x) => x.agent === name);
+            return el("td", { class: "num", title: `${a.calls} call(s)` }, a.calls ? `${fmt(a.prompt_tokens)} / ${fmt(a.completion_tokens)}` : "-");
+          }),
+          el("td", { class: "num font-medium" }, `${fmt(r.totals.prompt_tokens)} / ${fmt(r.totals.completion_tokens)}`),
+          el("td", { class: "num" }, usd(r.totals.cost_usd)))))));
+    } catch (err) {
+      box.textContent = `Could not load usage: ${err.message}`;
+    }
+  })();
+</script>
+{% endblock %}

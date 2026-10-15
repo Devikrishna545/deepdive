@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}DeepDive — new research{% endblock %}
+{% block content %}
+<section class="max-w-3xl">
+  <h1 class="text-3xl sm:text-4xl font-semibold leading-tight tracking-tight">
+    Ask a research question. Get a report where every sentence has been checked against its source.
+  </h1>
+  <p class="mt-3 text-slate max-w-2xl">
+    Five agents plan, search, draft and verify. Claims the sources don't support are removed,
+    and you can see why in the audit trail.
+  </p>
+
+  <form id="run-form" class="mt-8 bg-white border border-rule rounded-lg p-4 sm:p-5">
+    <label for="question" class="block text-sm font-medium">Your question</label>
+    <textarea id="question" name="question" rows="3" minlength="10" maxlength="500" required
+      class="mt-2 w-full rounded-md border border-rule p-3 text-base focus:outline-none focus:ring-2 focus:ring-primary"
+      placeholder="What are the main risks of investing in the EV battery market in 2026?"></textarea>
+
+    <div class="mt-4 flex flex-col sm:flex-row sm:items-end gap-4">
+      <fieldset>
+        <legend class="text-sm font-medium">Depth</legend>
+        <div class="mt-2 flex gap-4 text-sm">
+          <label class="flex items-center gap-2"><input type="radio" name="depth" value="quick"> Quick (3 sub-questions)</label>
+          <label class="flex items-center gap-2"><input type="radio" name="depth" value="standard" checked> Standard</label>
+        </div>
+      </fieldset>
+      <div class="sm:ml-auto">
+        <label for="files" class="block text-sm font-medium">Your documents <span class="text-slate font-normal">(optional)</span></label>
+        <input id="files" type="file" multiple accept=".pdf,.docx,.txt,.md" class="mt-2 text-sm">
+      </div>
+    </div>
+
+    <div class="mt-5 flex items-center gap-4">
+      <button type="submit" id="submit"
+        class="bg-ink text-white rounded-md px-5 py-2.5 font-medium hover:bg-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50">
+        Start research
+      </button>
+      <p id="form-status" class="text-sm text-slate" role="status"></p>
+    </div>
+  </form>
+</section>
+
+<section class="mt-12 max-w-3xl">
+  <h2 class="text-lg font-semibold">Recent runs</h2>
+  {% if runs %}
+  <ul class="mt-3 divide-y divide-rule border-y border-rule bg-white">
+    {% for r in runs %}
+    <li>
+      <a href="/runs/{{ r.id }}" class="flex items-center gap-4 px-4 py-3 hover:bg-paper">
+        <span class="status-dot status-{{ r.status }}" aria-hidden="true"></span>
+        <span class="flex-1 truncate">{{ r.question }}</span>
+        <span class="text-sm text-slate">{{ r.status }}</span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="mt-3 text-slate">No runs yet. Your first report will appear here.</p>
+  {% endif %}
+</section>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', path='js/index.js') }}"></script>{% endblock %}

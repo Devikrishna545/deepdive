@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}DeepDive{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
+  <!-- Tailwind Play CDN: fine for a hackathon. For production, build Tailwind with the CLI. -->
+  <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            paper: "#F5F7FA", ink: "#14213D", slate: "#5B6B82", rule: "#D9DFE7",
+            primary: "#2F5BEA", verified: "#1F7A4D", partial: "#B7791F", rejected: "#B42318",
+          },
+          fontFamily: {
+            sans: ['"IBM Plex Sans"', "system-ui", "sans-serif"],
+            serif: ['"Source Serif 4"', "Georgia", "serif"],
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}">
+</head>
+<body class="bg-paper text-ink font-sans antialiased min-h-screen">
+  <header class="border-b border-rule bg-white">
+    <div class="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+      <a href="/" class="font-semibold tracking-tight text-lg">DeepDive</a>
+      <nav class="flex gap-5 text-sm text-slate">
+        <a href="/" class="hover:text-ink">New research</a>
+        {% if settings().dev_mode %}<a href="/dev/usage" class="hover:text-ink">Token usage (dev)</a>{% endif %}
+        <a href="/docs" class="hover:text-ink">API</a>
+      </nav>
+    </div>
+  </header>
+  <div id="balance-banner" role="status" class="hidden"></div>
+  <main class="max-w-6xl mx-auto px-4 py-8">
+    {% block content %}{% endblock %}
+  </main>
+  <script src="{{ url_for('static', path='js/common.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
