@@ -1,4 +1,4 @@
-# DeepDive — a self-verifying research analyst
+# DeepDive : a self-verifying research analyst
 
 DeepDive answers a research question with a structured report in which **every sentence has
 been checked against the source passage it cites**. Claims the sources don't support are
