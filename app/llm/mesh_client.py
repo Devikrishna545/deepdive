@@ -71,6 +71,7 @@ class MeshClient:
     base_url: str
     _json_mode_unsupported: set[str] = field(default_factory=set)
     _thinking_models: set[str] = field(default_factory=set)
+    _effort_unsupported: set[str] = field(default_factory=set)
 
     def __post_init__(self) -> None:
         if not self.api_key:
@@ -84,7 +85,8 @@ class MeshClient:
         stop=stop_after_attempt(3),
         reraise=True,
     )
-    def _complete(self, model: str, messages: list[dict], temperature: float, max_tokens: int) -> tuple[str, str]:
+    def _complete(self, model: str, messages: list[dict], temperature: float, max_tokens: int,
+                  reasoning_effort: str | None = None) -> tuple[str, str]:
         kwargs: dict = {
             "model": model,
             "messages": messages,
@@ -93,9 +95,11 @@ class MeshClient:
         }
         if model not in self._json_mode_unsupported:
             kwargs["response_format"] = {"type": "json_object"}
+        if reasoning_effort and model not in self._effort_unsupported:
+            kwargs["reasoning_effort"] = reasoning_effort  # limits hidden thinking on reasoning models
         started = time.perf_counter()
         resp = None
-        for _ in range(3):  # adapt to models that reject a parameter (a rejected call is not billed)
+        for _ in range(4):  # adapt to models that reject a parameter (a rejected call is not billed)
             try:
                 resp = self._client.chat.completions.create(**kwargs)
                 break
@@ -104,6 +108,9 @@ class MeshClient:
                 if "response_format" in kwargs and ("response_format" in text or "json" in text):
                     self._json_mode_unsupported.add(model)
                     kwargs.pop("response_format")
+                elif "reasoning_effort" in kwargs and "reasoning" in text:
+                    self._effort_unsupported.add(model)
+                    kwargs.pop("reasoning_effort")
                 elif "max_tokens" in kwargs and "max_tokens" in text:  # newer reasoning models
                     kwargs["max_completion_tokens"] = kwargs.pop("max_tokens")
                 elif "temperature" in kwargs and "temperature" in text:
@@ -126,16 +133,18 @@ class MeshClient:
         choice = resp.choices[0]
         return choice.message.content or "", choice.finish_reason or ""
 
-    def _complete_text(self, model: str, messages: list[dict], temperature: float, max_tokens: int) -> str:
+    def _complete_text(self, model: str, messages: list[dict], temperature: float, max_tokens: int,
+                       reasoning_effort: str | None = None) -> str:
         """Like _complete, but survives "thinking" models (e.g. gemini-2.5-flash).
 
         Those spend hidden reasoning tokens inside max_tokens; with a tight cap they can stop
         with finish_reason="length" before writing any answer. In that case retry ONCE with a
         larger cap, and remember the model so later calls start with the larger cap.
         """
+        extra = {"reasoning_effort": reasoning_effort} if reasoning_effort else {}
         if model in self._thinking_models:
             max_tokens = max(max_tokens, THINKING_MIN_TOKENS)
-        text, finish = self._complete(model, messages, temperature, max_tokens)
+        text, finish = self._complete(model, messages, temperature, max_tokens, **extra)
         if finish == "length" and max_tokens < THINKING_MIN_TOKENS:
             # Cut off at the cap: an empty or half-written JSON reply is useless, so one retry with
             # a larger cap is cheaper than a repair round. Empty text = hidden reasoning used the cap.
@@ -143,7 +152,10 @@ class MeshClient:
                 self._thinking_models.add(model)
             log.info("%s hit its %s-token cap (%s); retrying with %s", model, max_tokens,
                      "no answer yet" if not text.strip() else "reply cut off", THINKING_MIN_TOKENS)
-            text, finish = self._complete(model, messages, temperature, THINKING_MIN_TOKENS)
+            text, finish = self._complete(model, messages, temperature, THINKING_MIN_TOKENS, **extra)
+        if finish == "length" and not text.strip():
+            log.warning("%s spent its whole %s-token cap on hidden reasoning and wrote no answer", model,
+                        max(max_tokens, THINKING_MIN_TOKENS))
         return text
 
     def chat_json(
@@ -155,17 +167,35 @@ class MeshClient:
         schema: type[T],
         temperature: float = 0.0,
         max_tokens: int = 800,
+        fallback_model: str | None = None,
+        reasoning_effort: str | None = None,
     ) -> T:
         """Return a validated `schema` instance produced by `model` via Mesh.
 
         The output format is described with a compact one-line shape (see schema_hint.py)
         instead of a full JSON Schema dump: same information, a fraction of the tokens.
+        `fallback_model`: if `model` errors or stays invalid after its repair round, the same
+        request is sent once to this model (never on a 402: no model can be paid for then).
+        `reasoning_effort` ("minimal" / "low" / ...): sent to reasoning models so hidden thinking
+        leaves room for the answer; dropped automatically for a model that rejects it.
         """
+        try:
+            return self._chat_json(model, system, user, schema, temperature, max_tokens, reasoning_effort)
+        except (MeshError, APIStatusError) as exc:
+            if not fallback_model or fallback_model == model or "402" in str(exc):
+                raise
+            log.warning("%s failed (%s); falling back to %s", model, str(exc)[:200], fallback_model)
+            return self._chat_json(fallback_model, system, user, schema, temperature, max_tokens, reasoning_effort)
+
+    def _chat_json(self, model: str, system: str, user: str, schema: type[T], temperature: float,
+                   max_tokens: int, reasoning_effort: str | None = None) -> T:
         messages = [
             {"role": "system", "content": f"{system}\n\nReply with ONLY this JSON shape:\n{schema_hint(schema)}"},
             {"role": "user", "content": user},
         ]
-        reply = self._complete_text(model, messages, temperature, max_tokens)
+        reply = self._complete_text(model, messages, temperature, max_tokens, reasoning_effort)
+        if not reply.strip():  # nothing to repair (e.g. all tokens spent thinking); let the caller fall back
+            raise MeshError(f"{model} returned an empty reply")
         try:
             return schema.model_validate(extract_json(reply))
         except (ValueError, ValidationError) as first_error:
@@ -179,7 +209,7 @@ class MeshClient:
                     "Return only the corrected JSON object.",
                 },
             ]
-            repaired = self._complete_text(model, messages, temperature, max_tokens)
+            repaired = self._complete_text(model, messages, temperature, max_tokens, reasoning_effort)
             try:
                 return schema.model_validate(extract_json(repaired))
             except (ValueError, ValidationError) as second_error:

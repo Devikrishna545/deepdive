@@ -26,8 +26,9 @@ def main() -> None:
     s = get_settings()
     mesh = get_mesh()
     models = {
-        "planner": s.model_planner, "researcher": s.model_researcher, "drafter": s.model_drafter,
-        "verifier": s.model_verifier, "synthesizer": s.model_synthesizer, "judge": s.model_judge,
+        "planner": s.model_planner, "planner_fb": s.model_planner_fallback, "researcher": s.model_researcher,
+        "drafter": s.model_drafter, "verifier": s.model_verifier, "synthesizer": s.model_synthesizer,
+        "judge": s.model_judge,
     }
     seen: set[str] = set()
     for role, model in models.items():

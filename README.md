@@ -51,7 +51,9 @@ claims from 2 independent domains (bounded by `MAX_LOOPS`), and deterministic co
 
 - Balance read from Mesh (`GET /v1/balance`) before every run: a banner below **$5**, new runs refused below **$1**.
 - Every call is priced with live Mesh prices; cost is shown per step and per run, and a run stops at `RUN_BUDGET_USD`.
-- Cheap models for planning, extraction, drafting and writing; the stronger model only for the verifier, where accuracy is decided.
+- Cheap models for extraction, drafting and writing; a cheap reasoning model for planning (`gpt-5-nano`,
+  falling back to `gpt-oss-120b`), since the plan decides every search; the stronger model only for the
+  verifier, where accuracy is decided.
 - Short prompts, compact output formats, `max_tokens` on every call, and a free code path that accepts claims copied word for word from a whole source sentence.
 - `python -m scripts.mesh_account` (free) shows your balance, the price of each configured model and the estimated cost per run.
 - Developer view (`DEV_MODE=true`): a **Tokens (dev)** tab on each run and a `/dev/usage` page show input and output tokens, calls and cost per agent and per step, live while a run is going.

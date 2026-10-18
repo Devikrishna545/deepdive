@@ -54,8 +54,9 @@ makes the report more faithful to its sources, even if it gets shorter.
    tokens each); output format is the compact `schema_hint`, never a full JSON Schema. Send each
    agent only what it needs (the drafter gets findings, not chunks; the verifier gets one claim
    and its cited chunks). Do not resend context "just in case".
-10. **Model choice:** cheap models (`gpt-4o-mini` class) for planner, researcher, drafter,
-    synthesizer; the stronger model only for the verifier, where claim accuracy is decided.
+10. **Model choice:** cheap models (`gpt-4o-mini` class) for researcher, drafter, synthesizer; a
+    cheap reasoning model for the planner (`gpt-5-nano`, fallback `gpt-oss-120b`), because plans
+    decide every search; the stronger model only for the verifier, where claim accuracy is decided.
     Before changing a model, check its live price with `python -m scripts.mesh_account` (free).
 11. **Respect the guards:** `RUN_BUDGET_USD` per run, `MIN_BALANCE_STOP_USD` floor (runs refused),
     `LOW_BALANCE_ALERT_USD` warning ($5). Don't raise them to "make a run finish".

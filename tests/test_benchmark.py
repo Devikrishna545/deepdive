@@ -128,3 +128,10 @@ def test_reuse_scores_the_stored_run_instead_of_running_again(fake_world):
 def test_anchor_ignores_leading_zero_in_day():
     assert fact_in([["2 august 2026"]], "The majority of rules apply from 02 August 2026.")
     assert not fact_in([["2 august 2026"]], "from 12 August 2026")
+
+
+def test_norm_expands_short_month_names():
+    from evaluation.benchmark import fact_in
+    assert fact_in([["2 february 2025"]], "02 Feb 2025 General provisions apply")
+    assert fact_in([["2 august 2026"]], "02 Aug. 2026 The majority of rules apply")
+    assert not fact_in([["2 august 2026"]], "augment 2026")

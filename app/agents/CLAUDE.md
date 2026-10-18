@@ -10,7 +10,7 @@ Each agent has its own folder with three files. **Read the agent's `SKILL.md` be
 
 | Agent | Job | Model setting | Sees |
 | --- | --- | --- | --- |
-| planner | question -> sub-questions + queries; thin topic -> gap queries | MODEL_PLANNER | question, rejection reasons |
+| planner | question -> sub-questions + queries; thin topic -> gap queries | MODEL_PLANNER (reasoning; MODEL_PLANNER_FALLBACK on failure) | question, rejection reasons |
 | researcher | sub-question -> sources, chunks, findings (chunk-cited) | MODEL_RESEARCHER | chunks it fetched |
 | drafter | findings -> atomic cited claims | MODEL_DRAFTER | findings only (chunk ids, no chunk text) |
 | verifier | ONE claim vs ITS cited chunks -> verdict | MODEL_VERIFIER (different family) | one claim + its chunks only |
@@ -30,5 +30,5 @@ Shared rules:
 8. Every behaviour change needs a test using `tests/fakes.py::FakeMesh`.
 9. Credits are scarce: pass `max_tokens` on every call, keep `prompt.md` short (~150 tokens),
    send only the inputs listed in the table above, and prefer a code check to an extra LLM call.
-   Current caps: planner 500 / gap 150, researcher 800, drafter 700, verifier 200,
+   Current caps: planner 2500 / gap 1000 (reasoning model: hidden thinking counts against the cap), researcher 800, drafter 700, verifier 200,
    synthesizer 1400, contradiction pairs 120.

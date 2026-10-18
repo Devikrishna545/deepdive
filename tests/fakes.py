@@ -43,7 +43,8 @@ class FakeMesh:
         self.calls: list[str] = []
         self.prompts: list[str] = []
 
-    def chat_json(self, *, model, system, user, schema, temperature=0.0, max_tokens=800):
+    def chat_json(self, *, model, system, user, schema, temperature=0.0, max_tokens=800, fallback_model=None,
+                  reasoning_effort=None):
         self.calls.append(schema.__name__)
         self.prompts.append(user)
         # report plausible usage so token/cost accounting is exercised offline

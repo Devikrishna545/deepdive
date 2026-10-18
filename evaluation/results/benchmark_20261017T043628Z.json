@@ -1,0 +1,2829 @@
+{
+  "timestamp": "20261017T043628Z",
+  "depth": "quick",
+  "judge_model": "google/gemini-2.5-flash",
+  "models": {
+    "planner": "openai/gpt-5-nano",
+    "researcher": "openai/gpt-4o-mini",
+    "drafter": "openai/gpt-4o-mini",
+    "verifier": "anthropic/claude-haiku-4.5",
+    "synthesizer": "openai/gpt-4o-mini"
+  },
+  "stopped_early": null,
+  "summary": {
+    "questions": 10,
+    "failed": 0,
+    "facts_total": 39,
+    "fact_coverage": 0.7833,
+    "judge_fact_coverage": 0.8,
+    "citation_accuracy": 0.9167,
+    "facts_lost_at": {
+      "retrieved": 4,
+      "extracted": 3,
+      "drafted": 1,
+      "verified": 0,
+      "reported": 0
+    },
+    "must_not_claim_hits": 0,
+    "premise_corrected": "2/2",
+    "uncited_sentences": 0,
+    "claim_pass_rate": 0.9637,
+    "avg_seconds": 49.86,
+    "avg_cost_usd": 0.0209,
+    "total_cost_usd": 0.2093,
+    "tokens_by_agent": {
+      "planner": {
+        "calls": 12,
+        "prompt_tokens": 2930,
+        "completion_tokens": 9456,
+        "cost_usd": 0.00393
+      },
+      "researcher": {
+        "calls": 34,
+        "prompt_tokens": 61091,
+        "completion_tokens": 7418,
+        "cost_usd": 0.01362
+      },
+      "drafter": {
+        "calls": 33,
+        "prompt_tokens": 14282,
+        "completion_tokens": 9084,
+        "cost_usd": 0.00759
+      },
+      "verifier": {
+        "calls": 183,
+        "prompt_tokens": 84868,
+        "completion_tokens": 15938,
+        "cost_usd": 0.16288
+      },
+      "synthesizer": {
+        "calls": 10,
+        "prompt_tokens": 10711,
+        "completion_tokens": 5209,
+        "cost_usd": 0.00473
+      }
+    }
+  },
+  "rows": [
+    {
+      "id": "b01",
+      "category": "tax_law",
+      "question": "What are the UAE corporate tax rates and when did they take effect?",
+      "run_id": "bench_6a8d76667e",
+      "cost_usd": 0.01247,
+      "judge_cost_usd": 0.0015,
+      "tokens": 12179,
+      "usage": {
+        "run_id": "bench_6a8d76667e",
+        "agents": [
+          {
+            "agent": "planner",
+            "calls": 0,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+            "cost_usd": 0.0,
+            "models": [],
+            "max_prompt_tokens_per_call": 0,
+            "avg_prompt_tokens_per_call": 0
+          },
+          {
+            "agent": "researcher",
+            "calls": 2,
+            "prompt_tokens": 3566,
+            "completion_tokens": 324,
+            "total_tokens": 3890,
+            "cost_usd": 0.00073,
+            "models": [
+              "openai/gpt-4o-mini"
+            ],
+            "max_prompt_tokens_per_call": 1789,
+            "avg_prompt_tokens_per_call": 1783
+          },
+          {
+            "agent": "drafter",
+            "calls": 2,
+            "prompt_tokens": 743,
+            "completion_tokens": 486,
+            "total_tokens": 1229,
+            "cost_usd": 0.000403,
+            "models": [
+              "openai/gpt-4o-mini"
+            ],
+            "max_prompt_tokens_per_call": 400,
+            "avg_prompt_tokens_per_call": 372
+          },
+          {
+            "agent": "verifier",
+            "calls": 11,
+            "prompt_tokens": 5162,
+            "completion_tokens": 893,
+            "total_tokens": 6055,
+            "cost_usd": 0.009554,
+            "models": [
+              "anthropic/claude-haiku-4.5",
+              "openai/text-embedding-3-small"
+            ],
+            "max_prompt_tokens_per_call": 589,
+            "avg_prompt_tokens_per_call": 469
+          },
+          {
+            "agent": "synthesizer",
+            "calls": 1,
+            "prompt_tokens": 710,
+            "completion_tokens": 295,
+            "total_tokens": 1005,
+            "cost_usd": 0.000284,
+            "models": [
+              "openai/gpt-4o-mini"
+            ],
+            "max_prompt_tokens_per_call": 710,
+            "avg_prompt_tokens_per_call": 710
+          }
+        ],
+        "steps": [
+          {
+            "node": "research:sq_376e725f6f",
+            "agent": "researcher",
+            "calls": 1,
+            "prompt_tokens": 1789,
+            "completion_tokens": 132,
+            "cost_usd": 0.000348,
+            "latency_ms": 1989,
+            "summary": "When did the UAE corporate tax rates become effective?: 4 pages, 10 chunks, 3 findings"
+          },
+          {
+            "node": "research:sq_50b4270c90",
+            "agent": "researcher",
+            "calls": 1,
+            "prompt_tokens": 1777,
+            "completion_tokens": 192,
+            "cost_usd": 0.000382,
+            "latency_ms": 1991,
+            "summary": "What corporate tax rates are applied in the UAE?: 4 pages, 10 chunks, 4 findings"
+          },
+          {
+            "node": "draft",
+            "agent": "drafter",
+            "calls": 2,
+            "prompt_tokens": 743,
+            "completion_tokens": 486,
+            "cost_usd": 0.000403,
+            "latency_ms": 770,
+            "summary": "drafted 11 atomic claims (round 0)"
+          },
+          {
+            "node": "verify",
+            "agent": "verifier",
+            "calls": 10,
+            "prompt_tokens": 5088,
+            "completion_tokens": 893,
+            "cost_usd": 0.009553,
+            "latency_ms": 3681,
+            "summary": "verified 11: 11 supported, 0 partial, 0 unsupported, 0 contradicted"
+          },
+          {
+            "node": "cross_check",
+            "agent": "verifier",
+            "calls": 1,
+            "prompt_tokens": 74,
+            "completion_tokens": 0,
+            "cost_usd": 1e-06,
+            "latency_ms": 870,
+            "summary": "0 disagreement(s) across sources"
+          },
+          {
+            "node": "synthesize",
+            "agent": "synthesizer",
+            "calls": 1,
+            "prompt_tokens": 710,
+            "completion_tokens": 295,
+            "cost_usd": 0.000284,
+            "latency_ms": 3759,
+            "summary": "drafted report with 6 sentences from 11 claims; code added 1 verified key claim(s) the writer left out"
+          }
+        ],
+        "totals": {
+          "calls": 16,
+          "prompt_tokens": 10181,
+          "completion_tokens": 1998,
+          "total_tokens": 12179,
+          "cost_usd": 0.010971
+        }
+      },
+      "facts": [
+        {
+          "fact": "0% on taxable income up to AED 375,000",
+          "stages": {
+            "retrieved": true,
+            "extracted": true,
+            "drafted": true,
+            "verified": true,
+            "reported": true
+          },
+          "lost_at": null,
+          "furthest": "reported",
+          "citation_ok": true,
+          "rejections": [],
+          "judge_covered": true
+        },
+        {
+          "fact": "9% on taxable income above AED 375,000",
+          "stages": {
+            "retrieved": true,
+            "extracted": true,
+            "drafted": true,
+            "verified": true,
+            "reported": true
+          },
+          "lost_at": null,
+          "furthest": "reported",
+          "citation_ok": true,
+          "rejections": [],
+          "judge_covered": true
+        },
+        {
+          "fact": "the AED 375,000 threshold is set by Cabinet Decision No. 116 of 2022",
+          "stages": {
+            "retrieved": false,
+            "extracted": false,
+            "drafted": false,
+            "verified": false,
+            "reported": false
+          },
+          "lost_at": "retrieved",
+          "furthest": null,
+          "citation_ok": null,
+          "rejections": [],
+          "judge_covered": false
+        },
+        {
+          "fact": "the law is Federal Decree-Law No. 47 of 2022",
+          "stages": {
+            "retrieved": true,
+            "extracted": false,
+            "drafted": false,
+            "verified": false,
+            "reported": false
+          },
+          "lost_at": "extracted",
+          "furthest": "retrieved",
+          "citation_ok": null,
+          "rejections": [],
+          "judge_covered": true
+        },
+        {
+          "fact": "applies to financial years starting on or after 1 June 2023",
+          "stages": {
+            "retrieved": true,
+            "extracted": true,
+            "drafted": true,
+            "verified": true,
+            "reported": true
+          },
+          "lost_at": null,
+          "furthest": "reported",
+          "citation_ok": true,
+          "rejections": [],
+          "judge_covered": true
+        },
+        {
+          "fact": "qualifying free zone persons pay 0% on qualifying income",
+          "stages": {
+            "retrieved": true,
+            "extracted": false,
+            "drafted": false,
+            "verified": false,
+            "reported": false
+          },
+          "lost_at": "extracted",
+          "furthest": "retrieved",
+          "citation_ok": null,
+          "rejections": [],
+          "judge_covered": false
+        }
+      ],
+      "fact_coverage": 0.5,
+      "citation_accuracy": 1.0,
+      "lost_at": {
+        "retrieved": 1,
+        "extracted": 2,
+        "drafted": 0,
+        "verified": 0,
+        "reported": 0
+      },
+      "sentences": 6,
+      "uncited_sentences": 0,
+      "claims_drafted": 11,
+      "claims_kept": 11,
+      "sources": 7,
+      "domains": [
+        "cleartax.com",
+        "cnbc.com",
+        "dlapiper.com",
+        "global.ecovis.com",
+        "shamsfz.ae",
+        "simmons-simmons.com",
+        "tradingeconomics.com"
+      ],
+      "judge_fact_coverage": 0.6667,
+      "must_not_claim_hits": [],
+      "seconds": 13.6
+    },
+    {
+      "id": "b02",
+      "category": "tech_policy",
+      "question": "When do the EU AI Act's obligations apply?",
+      "run_id": "bench_d64e89686b",
+      "cost_usd": 0.02405,
+      "judge_cost_usd": 0.00203,
+      "tokens": 22811,
+      "usage": {
+        "run_id": "bench_d64e89686b",
+        "agents": [
+          {
+            "agent": "planner",
+            "calls": 0,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+            "cost_usd": 0.0,
+            "models": [],
+            "max_prompt_tokens_per_call": 0,
+            "avg_prompt_tokens_per_call": 0
+          },
+          {
+            "agent": "researcher",
+            "calls": 3,
+            "prompt_tokens": 5543,
+            "completion_tokens": 936,
+            "total_tokens": 6479,
+            "cost_usd": 0.001394,
+            "models": [
+              "openai/gpt-4o-mini"
+            ],
+            "max_prompt_tokens_per_call": 1901,
+            "avg_prompt_tokens_per_call": 1848
+          },
+          {
+            "agent": "drafter",
+            "calls": 3,
+            "prompt_tokens": 1557,
+            "completion_tokens": 944,
+            "total_tokens": 2501,
+            "cost_usd": 0.0008,
+            "models": [
+              "openai/gpt-4o-mini"
+            ],
+            "max_prompt_tokens_per_call": 540,
+            "avg_prompt_tokens_per_call": 519
+          },
+          {
+            "agent": "verifier",
+            "calls": 21,
+            "prompt_tokens": 10058,
+            "completion_tokens": 1894,
+            "total_tokens": 11952,
+            "cost_usd": 0.019169,
+            "models": [
+              "anthropic/claude-haiku-4.5",
+              "openai/text-embedding-3-small"
+            ],
+            "max_prompt_tokens_per_call": 711,
+            "avg_prompt_tokens_per_call": 479
+          },
+          {
+            "agent": "synthesizer",
+            "calls": 1,
+            "prompt_tokens": 1043,
+            "completion_tokens": 836,
+            "total_tokens": 1879,
+            "cost_usd": 0.000658,
+            "models": [
+              "openai/gpt-4o-mini"
+            ],
+            "max_prompt_tokens_per_call": 1043,
+            "avg_prompt_tokens_per_call": 1043
+          }
+        ],
+        "steps": [
+          {
+            "node": "research:sq_43c0670c36",
+            "agent": "researcher",
+            "calls": 1,
+            "prompt_tokens": 1901,
+            "completion_tokens": 336,
+            "cost_usd": 0.000487,
+            "latency_ms": 584,
+            "summary": "When does the EU AI Act enter into force?: 4 pages, 10 chunks, 6 findings"
+          },
+          {
+            "node": "research:sq_926a9cccb2",
+            "agent": "researcher",
+            "calls": 1,
+            "prompt_tokens": 1852,
+            "completion_tokens": 278,
+            "cost_usd": 0.000445,
+            "latency_ms": 873,
+            "summary": "Are there any phased or transitional implementation dates fo: 4 pages, 10 chunks, 8 findings"
+          },
+          {
+            "node": "research:sq_c6940dc03b",
+            "agent": "researcher",
+            "calls": 1,
+            "prompt_tokens": 1790,
+            "completion_tokens": 322,
+            "cost_usd": 0.000462,
+            "latency_ms": 1974,
+            "summary": "From what date are the obligations for high\u2011risk AI systems : 4 pages, 10 chunks, 6 findings"
+          },
+          {
+            "node": "draft",
+            "agent": "drafter",
+            "calls": 3,
+            "prompt_tokens": 1557,
+            "completion_tokens": 944,
+            "cost_usd": 0.0008,
+            "latency_ms": 1729,
+            "summary": "drafted 19 atomic claims (round 0)"
+          },
+          {
+            "node": "verify",
+            "agent": "verifier",
+            "calls": 18,
+            "prompt_tokens": 9296,
+            "completion_tokens": 1641,
+            "cost_usd": 0.017501,
+            "latency_ms": 3300,
+            "summary": "verified 19: 17 supported, 0 partial, 2 unsupported, 0 contradicted"
+          },
+          {
+            "node": "cross_check",
+            "agent": "verifier",
+            "calls": 3,
+            "prompt_tokens": 762,
+            "completion_tokens": 253,
+            "cost_usd": 0.001668,
+            "latency_ms": 2377,
+            "summary": "0 disagreement(s) across sources"
+          },
+          {
+            "node": "synthesize",
+            "agent": "synthesizer",
+            "calls": 1,
+            "prompt_tokens": 1043,
+            "completion_tokens": 836,
+            "cost_usd": 0.000658,
+            "latency_ms": 7162,
+            "summary": "drafted report with 16 sentences from 17 claims; code added 1 verified key claim(s) the writer left out"
+          }
+        ],
+        "totals": {
+          "calls": 28,
+          "prompt_tokens": 18201,
+          "completion_tokens": 4610,
+          "total_tokens": 22811,
+          "cost_usd": 0.022021
+        }
+      },
+      "facts": [
+        {
+          "fact": "the AI Act entered into force on 1 August 2024",
+          "stages": {
+            "retrieved": true,
+            "extracted": true,
+            "drafted": true,
+            "verified": true,
+            "reported": true
+          },
+          "lost_at": null,
+          "furthest": "reported",
+          "citation_ok": true,
+          "rejections": [],
+          "judge_covered": true
+        },
+        {
+          "fact": "prohibitions and AI literacy obligations apply from 2 February 2025",
+          "stages": {
+            "retrieved": true,
+            "extracted": true,
+            "drafted": true,
+            "verified": true,
+            "reported": true
+          },
+          "lost_at": null,
+          "furthest": "reported",
+          "citation_ok": false,
+          "rejections": [
+            {
+              "claim": "On 2 February 2025, prohibited practices and AI literacy requirements start to apply.",
+              "label": "UNSUPPORTED",
+              "reason": "quote guard: evidence quote not found in cited source (verifier said SUPPORTED: Source explicitly states both prohibited practices and AI literacy requirements apply on 2 February 2025.)",
+              "guard_downgraded": true
+            }
+          ],
+          "judge_covered": true
+        },
+        {
+          "fact": "general-purpose AI model obligations apply from 2 August 2025",
+          "stages": {
+            "retrieved": true,
+            "extracted": true,
+            "drafted": true,
+            "verified": true,
+            "reported": true
+          },
+          "lost_at": null,
+          "furthest": "reported",
+          "citation_ok": false,
+          "rejections": [
+            {
+              "claim": "On 2 August 2025, rules for general-purpose AI apply and governance must be in place, marking the start of obligations for providers of general-purpose AI models.",
+              "label": "UNSUPPORTED",
+              "reason": "quote guard: evidence quote not found in cited source (verifier said SUPPORTED: Source explicitly states the date, rules, and obligations match the claim exactly.)",
+              "guard_downgraded": true
+            }
+          ],
+          "judge_covered": true
+        },
+        {
+          "fact": "the Act is broadly applicable from 2 August 2026, with some exceptions",
+          "stages": {
+            "retrieved": true,
+            "extracted": true,
+            "drafted": true,
+            "verified": true,
+            "reported": true
+          },
+          "lost_at": null,
+          "furthest": "reported",
+          "citation_ok": true,
+          "rejections": [],
+          "judge_covered": true
+        }
+      ],
+      "fact_coverage": 1.0,
+      "citation_accuracy": 0.5,
+      "lost_at": {
+        "retrieved": 0,
+        "extracted": 0,
+        "drafted": 0,
+        "verified": 0,
+        "reported": 0
+      },
+      "sentences": 16,
+      "uncited_sentences": 0,
+      "claims_drafted": 19,
+      "claims_kept": 17,
+      "sources": 11,
+      "domains": [
+        "ai-act-service-desk.ec.europa.eu",
+        "alexanderthamm.com",
+        "artificialintelligenceact.eu",
+        "digital-strategy.ec.europa.eu",
+        "en.wikipedia.org",
+        "euaiact.com",
+        "euaicompass.com",
+        "labs.cloudsecurityalliance.org",
+        "linkedin.com",
+        "regulatoryai.eu"
+      ],
+      "judge_fact_coverage": 1.0,
+      "must_not_claim_hits": [],
+      "seconds": 21.3
+    },
+    {
+      "id": "b03",
+      "category": "tax_policy",
+      "question": "What is the OECD Pillar Two global minimum tax and who does it apply to?",
+      "run_id": "bench_19a141e63c",
+      "cost_usd": 0.01851,
+      "judge_cost_usd": 0.00129,
+      "tokens": 18276,
+      "usage": {
+        "run_id": "bench_19a141e63c",
+        "agents": [
+          {
+            "agent": "planner",
+            "calls": 0,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+            "cost_usd": 0.0,
+            "models": [],
+            "max_prompt_tokens_per_call": 0,
+            "avg_prompt_tokens_per_call": 0
+          },
+          {
+            "agent": "researcher",
+            "calls": 3,
+            "prompt_tokens": 5349,
+            "completion_tokens": 604,
+            "total_tokens": 5953,
+            "cost_usd": 0.001165,
+            "models": [
+              "openai/gpt-4o-mini"
+            ],
+            "max_prompt_tokens_per_call": 1872,
+            "avg_prompt_tokens_per_call": 1783
+          },
+          {
+            "agent": "drafter",
+            "calls": 3,
+            "prompt_tokens": 1235,
+            "completion_tokens": 732,
+            "total_tokens": 1967,
+            "cost_usd": 0.000624,
+            "models": [
+              "openai/gpt-4o-mini"
+            ],
+            "max_prompt_tokens_per_call": 428,
+            "avg_prompt_tokens_per_call": 412
+          },
+          {
+            "agent": "verifier",
+            "calls": 16,
+            "prompt_tokens": 7134,
+            "completion_tokens": 1571,
+            "total_tokens": 8705,
+            "cost_usd": 0.014877,
+            "models": [
+              "anthropic/claude-haiku-4.5",
+              "openai/text-embedding-3-small"
+            ],
+            "max_prompt_tokens_per_call": 532,
+            "avg_prompt_tokens_per_call": 446
+          },
+          {
+            "agent": "synthesizer",
+            "calls": 1,
+            "prompt_tokens": 962,
+            "completion_tokens": 689,
+            "total_tokens": 1651,
+            "cost_usd": 0.000558,
+            "models": [
+              "openai/gpt-4o-mini"
+            ],
+            "max_prompt_tokens_per_call": 962,
+            "avg_prompt_tokens_per_call": 962
+          }
+        ],
+        "steps": [
+          {
+            "node": "research:sq_71721e6c6b",
+            "agent": "researcher",
+            "calls": 1,
+            "prompt_tokens": 1774,
+            "completion_tokens": 210,
+            "cost_usd": 0.000392,
+            "latency_ms": 1967,
+            "summary": "When was Pillar Two agreed and when is it expected to be imp: 4 pages, 10 chunks, 5 findings"
+          },
+          {
+            "node": "research:sq_5d691043a4",
+            "agent": "researcher",
+            "calls": 1,
+            "prompt_tokens": 1703,
+            "completion_tokens": 222,
+            "cost_usd": 0.000389,
+            "latency_ms": 2076,
+            "summary": "What is the OECD Pillar Two global minimum tax?: 4 pages, 10 chunks, 5 findings"
+          },
+          {
+            "node": "research:sq_3d9055c972",
+            "agent": "researcher",
+            "calls": 1,
+            "prompt_tokens": 1872,
+            "completion_tokens": 172,
+            "cost_usd": 0.000384,
+            "latency_ms": 2697,
+            "summary": "Who does the Pillar Two global minimum tax apply to?: 4 pages, 10 chunks, 3 findings"
+          },
+          {
+            "node": "draft",
+            "agent": "drafter",
+            "calls": 3,
+            "prompt_tokens": 1235,
+            "completion_tokens": 732,
+            "cost_usd": 0.000624,
+            "latency_ms": 2723,
+            "summary": "drafted 15 atomic claims (round 0)"
+          },
+          {
+            "node": "verify",
+            "agent": "verifier",
+            "calls": 15,
+            "prompt_tokens": 7020,
+            "completion_tokens": 1571,
+            "cost_usd": 0.014875,
+            "latency_ms": 3697,
+            "summary": "verified 16: 15 supported, 1 partial, 0 unsupported, 0 contradicted"
+          },
+          {
+            "node": "cross_check",
+            "agent": "verifier",
+            "calls": 1,
+            "prompt_tokens": 114,
+            "completion_tokens": 0,
+            "cost_usd": 2e-06,
+            "latency_ms": 880,
+            "summary": "0 disagreement(s) across sources"
+          },
+          {
+            "node": "synthesize",
+            "agent": "synthesizer",
+            "calls": 1,
+            "prompt_tokens": 962,
+            "completion_tokens": 689,
+            "cost_usd": 0.000558,
+            "latency_ms": 7266,
+            "summary": "drafted report with 13 sentences from 15 claims; code added 1 verified key claim(s) the writer left out"
+          }
+        ],
+        "totals": {
+          "calls": 23,
+          "prompt_tokens": 14680,
+          "completion_tokens": 3596,
+          "total_tokens": 18276,
+          "cost_usd": 0.017224
+        }
+      },
+      "facts": [
+        {
+          "fact": "a 15% minimum effective tax rate",
+          "stages": {
+            "retrieved": true,
+            "extracted": true,
+            "drafted": true,
+            "verified": true,
+            "reported": true
+          },
+          "lost_at": null,
+          "furthest": "reported",
+          "citation_ok": true,
+          "rejections": [],
+          "judge_covered": true
+        },
+        {
+          "fact": "applies to multinational groups with consolidated revenue of at least EUR 750 million",
+          "stages": {
+            "retrieved": true,
+            "extracted": true,
+            "drafted": true,
+            "verified": true,
+            "reported": true
+          },
+          "lost_at": null,
+          "furthest": "reported",
+          "citation_ok": true,
+          "rejections": [],
+          "judge_covered": true
+        },
+        {
+          "fact": "the revenue threshold must be met in at least two of the four preceding fiscal years",
+          "stages": {
+            "retrieved": true,
+            "extracted": true,
+            "drafted": true,
+            "verified": true,
+            "reported": true
+          },
+          "lost_at": null,
+          "furthest": "reported",
+          "citation_ok": true,
+          "rejections": [],
+          "judge_covered": true
+        }
+      ],
+      "fact_coverage": 1.0,
+      "citation_accuracy": 1.0,
+      "lost_at": {
+        "retrieved": 0,
+        "extracted": 0,
+        "drafted": 0,
+        "verified": 0,
+        "reported": 0
+      },
+      "sentences": 13,
+      "uncited_sentences": 0,
+      "claims_drafted": 16,
+      "claims_kept": 15,
+      "sources": 11,
+      "domains": [
+        "aoshearman.com",
+        "ato.gov.au",
+        "grantthornton.com",
+        "implementation.fpg.unc.edu",
+        "moodys.com",
+        "oecd.org",
+        "oecdpillars.com",
+        "permitting.innovation.gov",
+        "reuters.com",
+        "taxfoundation.org"
+      ],
+      "judge_fact_coverage": 1.0,
+      "must_not_claim_hits": [],
+      "seconds": 22.6
+    },
+    {
+      "id": "b04",
+      "category": "trade_policy",
+      "question": "How does the EU Carbon Border Adjustment Mechanism (CBAM) work, and which sectors does it cover?",
+      "run_id": "bench_e083c4e31f",
+      "cost_usd": 0.02255,
+      "judge_cost_usd": 0.00155,
+      "tokens": 24908,
+      "usage": {
+        "run_id": "bench_e083c4e31f",
+        "agents": [
+          {
+            "agent": "planner",
+            "calls": 2,
+            "prompt_tokens": 485,
+            "completion_tokens": 1392,
+            "total_tokens": 1877,
+            "cost_usd": 0.000581,
+            "models": [
+              "openai/gpt-5-nano"
+            ],
+            "max_prompt_tokens_per_call": 284,
+            "avg_prompt_tokens_per_call": 242
+          },
+          {
+            "agent": "researcher",
+            "calls": 4,
+            "prompt_tokens": 7042,
+            "completion_tokens": 890,
+            "total_tokens": 7932,
+            "cost_usd": 0.00159,
+            "models": [
+              "openai/gpt-4o-mini"
+            ],
+            "max_prompt_tokens_per_call": 2006,
+            "avg_prompt_tokens_per_call": 1760
+          },
+          {
+            "agent": "drafter",
+            "calls": 4,
+            "prompt_tokens": 1685,
+            "completion_tokens": 1102,
+            "total_tokens": 2787,
+            "cost_usd": 0.000914,
+            "models": [
+              "openai/gpt-4o-mini"
+            ],
+            "max_prompt_tokens_per_call": 456,
+            "avg_prompt_tokens_per_call": 421
+          },
+          {
+            "agent": "verifier",
+            "calls": 20,
+            "prompt_tokens": 8968,
+            "completion_tokens": 1750,
+            "total_tokens": 10718,
+            "cost_usd": 0.01753,
+            "models": [
+              "anthropic/claude-haiku-4.5",
+              "openai/text-embedding-3-small"
+            ],
+            "max_prompt_tokens_per_call": 495,
+            "avg_prompt_tokens_per_call": 448
+          },
+          {
+            "agent": "synthesizer",
+            "calls": 1,
+            "prompt_tokens": 1271,
+            "completion_tokens": 323,
+            "total_tokens": 1594,
+            "cost_usd": 0.000384,
+            "models": [
+              "openai/gpt-4o-mini"
+            ],
+            "max_prompt_tokens_per_call": 1271,
+            "avg_prompt_tokens_per_call": 1271
+          }
+        ],
+        "steps": [
+          {
+            "node": "plan",
+            "agent": "planner",
+            "calls": 1,
+            "prompt_tokens": 284,
+            "completion_tokens": 903,
+            "cost_usd": 0.000375,
+            "latency_ms": 6750,
+            "summary": "planned 3 sub-questions"
+          },
+          {
+            "node": "research:sq_8b587c6277",
+            "agent": "researcher",
+            "calls": 1,
+            "prompt_tokens": 1747,
+            "completion_tokens": 197,
+            "cost_usd": 0.00038,
+            "latency_ms": 7407,
+            "summary": "Is it true that cBAM has a transitional phase and will requi: 4 pages, 10 chunks, 4 findings"
+          },
+          {
+            "node": "research:sq_bb1751afa2",
+            "agent": "researcher",
+            "calls": 1,
+            "prompt_tokens": 1669,
+            "completion_tokens": 155,
+            "cost_usd": 0.000343,
+            "latency_ms": 8936,
+            "summary": "Identify the sectors covered by CBAM as of 2026.: 4 pages, 10 chunks, 3 findings"
+          },
+          {
+            "node": "research:sq_6285d12b11",
+            "agent": "researcher",
+            "calls": 1,
+            "prompt_tokens": 1620,
+            "completion_tokens": 235,
+            "cost_usd": 0.000384,
+            "latency_ms": 10540,
+            "summary": "Describe how CBAM operates (mechanism and price).: 4 pages, 10 chunks, 5 findings"
+          },
+          {
+            "node": "draft",
+            "agent": "drafter",
+            "calls": 3,
+            "prompt_tokens": 1229,
+            "completion_tokens": 842,
+            "cost_usd": 0.00069,
+            "latency_ms": 4409,
+            "summary": "drafted 18 atomic claims (round 0)"
+          },
+          {
+            "node": "verify",
+            "agent": "verifier",
+            "calls": 15,
+            "prompt_tokens": 6857,
+            "completion_tokens": 1337,
+            "cost_usd": 0.013542,
+            "latency_ms": 9822,
+            "summary": "verified 18: 18 supported, 0 partial, 0 unsupported, 0 contradicted"
+          },
+          {
+            "node": "gap_plan",
+            "agent": "planner",
+            "calls": 1,
+            "prompt_tokens": 201,
+            "completion_tokens": 489,
+            "cost_usd": 0.000206,
+            "latency_ms": 3658,
+            "summary": "loop-back: new queries for 1 sub-question(s)"
+          },
+          {
+            "node": "research:sq_6285d12b11",
+            "agent": "researcher",
+            "calls": 1,
+            "prompt_tokens": 2006,
+            "completion_tokens": 303,
+            "cost_usd": 0.000483,
+            "latency_ms": 12631,
+            "summary": "Describe how CBAM operates (mechanism and price).: 4 pages, 10 chunks, 3 findings"
+          },
+          {
+            "node": "draft",
+            "agent": "drafter",
+            "calls": 1,
+            "prompt_tokens": 456,
+            "completion_tokens": 260,
+            "cost_usd": 0.000224,
+            "latency_ms": 4126,
+            "summary": "drafted 4 atomic claims (round 1)"
+          },
+          {
+            "node": "verify",
+            "agent": "verifier",
+            "calls": 4,
+            "prompt_tokens": 1919,
+            "completion_tokens": 413,
+            "cost_usd": 0.003984,
+            "latency_ms": 4321,
+            "summary": "verified 4: 4 supported, 0 partial, 0 unsupported, 0 contradicted"
+          },
+          {
+            "node": "cross_check",
+            "agent": "verifier",
+            "calls": 1,
+            "prompt_tokens": 192,
+            "completion_tokens": 0,
+            "cost_usd": 4e-06,
+            "latency_ms": 948,
+            "summary": "0 disagreement(s) across sources"
+          },
+          {
+            "node": "synthesize",
+            "agent": "synthesizer",
+            "calls": 1,
+            "prompt_tokens": 1271,
+            "completion_tokens": 323,
+            "cost_usd": 0.000384,
+            "latency_ms": 4133,
+            "summary": "drafted report with 4 sentences from 22 claims; code added 1 verified key claim(s) the writer left out"
+          }
+        ],
+        "totals": {
+          "calls": 31,
+          "prompt_tokens": 19451,
+          "completion_tokens": 5457,
+          "total_tokens": 24908,
+          "cost_usd": 0.020999
+        }
+      },
+      "facts": [
+        {
+          "fact": "a transitional (reporting) phase ran from 2023 to the end of 2025",
+          "stages": {
+            "retrieved": true,
+            "extracted": true,
+            "drafted": true,
+            "verified": true,
+            "reported": true
+          },
+          "lost_at": null,
+          "furthest": "reported",
+          "citation_ok": true,
+          "rejections": [],
+          "judge_covered": true
+        },
+        {
+          "fact": "the definitive regime applies from 1 January 2026",
+          "stages": {
+            "retrieved": true,
+            "extracted": true,
+            "drafted": true,
+            "verified": true,
+            "reported": true
+          },
+          "lost_at": null,
+          "furthest": "reported",
+          "citation_ok": true,
+          "rejections": [],
+          "judge_covered": true
+        },
+        {
+          "fact": "it covers cement",
+          "stages": {
+            "retrieved": true,
+            "extracted": true,
+            "drafted": true,
+            "verified": true,
+            "reported": true
+          },
+          "lost_at": null,
+          "furthest": "reported",
+          "citation_ok": true,
+          "rejections": [],
+          "judge_covered": true
+        },
+        {
+          "fact": "it covers iron and steel",
+          "stages": {
+            "retrieved": true,
+            "extracted": true,
+            "drafted": true,
+            "verified": true,
+            "reported": true
+          },
+          "lost_at": null,
+          "furthest": "reported",
+          "citation_ok": true,
+          "rejections": [],
+          "judge_covered": true
+        },
+        {
+          "fact": "it covers aluminium",
+          "stages": {
+            "retrieved": true,
+            "extracted": true,
+            "drafted": true,
+            "verified": true,
+            "reported": true
+          },
+          "lost_at": null,
+          "furthest": "reported",
+          "citation_ok": true,
+          "rejections": [],
+          "judge_covered": true
+        },
+        {
+          "fact": "it covers fertilisers",
+          "stages": {
+            "retrieved": true,
+            "extracted": true,
+            "drafted": true,
+            "verified": true,
+            "reported": true
+          },
+          "lost_at": null,
+          "furthest": "reported",
+          "citation_ok": true,
+          "rejections": [],
+          "judge_covered": true
+        },
+        {
+          "fact": "it covers electricity",
+          "stages": {
+            "retrieved": true,
+            "extracted": true,
+            "drafted": true,
+            "verified": true,
+            "reported": true
+          },
+          "lost_at": null,
+          "furthest": "reported",
+          "citation_ok": true,
+          "rejections": [],
+          "judge_covered": true
+        },
+        {
+          "fact": "it covers hydrogen",
+          "stages": {
+            "retrieved": true,
+            "extracted": true,
+            "drafted": true,
+            "verified": true,
+            "reported": true
+          },
+          "lost_at": null,
+          "furthest": "reported",
+          "citation_ok": true,
+          "rejections": [],
+          "judge_covered": true
+        }
+      ],
+      "fact_coverage": 1.0,
+      "citation_accuracy": 1.0,
+      "lost_at": {
+        "retrieved": 0,
+        "extracted": 0,
+        "drafted": 0,
+        "verified": 0,
+        "reported": 0
+      },
+      "sentences": 4,
+      "uncited_sentences": 0,
+      "claims_drafted": 22,
+      "claims_kept": 22,
+      "sources": 16,
+      "domains": [
+        "assets.publishing.service.gov.uk",
+        "carbonglance.com",
+        "climate.ec.europa.eu",
+        "co2-iq.com",
+        "crowell.com",
+        "energypolicy.columbia.edu",
+        "eur-lex.europa.eu",
+        "europeansources.info",
+        "federalregister.gov",
+        "financialaid.tcnj.edu",
+        "gbc.edu",
+        "grantthornton.ie",
+        "taxation-customs.ec.europa.eu",
+        "trade.ec.europa.eu"
+      ],
+      "judge_fact_coverage": 1.0,
+      "must_not_claim_hits": [],
+      "seconds": 66.3
+    },
+    {
+      "id": "b05",
+      "category": "energy",
+      "question": "How much electricity do data centres use and how fast is it growing?",
+      "run_id": "bench_ffd759a3b9",
+      "cost_usd": 0.03189,
+      "judge_cost_usd": 0.0016,
+      "tokens": 29540,
+      "usage": {
+        "run_id": "bench_ffd759a3b9",
+        "agents": [
+          {
+            "agent": "planner",
+            "calls": 1,
+            "prompt_tokens": 276,
+            "completion_tokens": 958,
+            "total_tokens": 1234,
+            "cost_usd": 0.000397,
+            "models": [
+              "openai/gpt-5-nano"
+            ],
+            "max_prompt_tokens_per_call": 276,
+            "avg_prompt_tokens_per_call": 276
+          },
+          {
+            "agent": "researcher",
+            "calls": 3,
+            "prompt_tokens": 5189,
+            "completion_tokens": 954,
+            "total_tokens": 6143,
+            "cost_usd": 0.001352,
+            "models": [
+              "openai/gpt-4o-mini"
+            ],
+            "max_prompt_tokens_per_call": 1752,
+            "avg_prompt_tokens_per_call": 1730
+          },
+          {
+            "agent": "drafter",
+            "calls": 3,
+            "prompt_tokens": 1565,
+            "completion_tokens": 1400,
+            "total_tokens": 2965,
+            "cost_usd": 0.001075,
+            "models": [
+              "openai/gpt-4o-mini"
+            ],
+            "max_prompt_tokens_per_call": 616,
+            "avg_prompt_tokens_per_call": 522
+          },
+          {
+            "agent": "verifier",
+            "calls": 31,
+            "prompt_tokens": 14561,
+            "completion_tokens": 2498,
+            "total_tokens": 17059,
+            "cost_usd": 0.026831,
+            "models": [
+              "anthropic/claude-haiku-4.5",
+              "openai/text-embedding-3-small"
+            ],
+            "max_prompt_tokens_per_call": 683,
+            "avg_prompt_tokens_per_call": 470
+          },
+          {
+            "agent": "synthesizer",
+            "calls": 1,
+            "prompt_tokens": 1440,
+            "completion_tokens": 699,
+            "total_tokens": 2139,
+            "cost_usd": 0.000635,
+            "models": [
+              "openai/gpt-4o-mini"
+            ],
+            "max_prompt_tokens_per_call": 1440,
+            "avg_prompt_tokens_per_call": 1440
+          }
+        ],
+        "steps": [
+          {
+            "node": "plan",
+            "agent": "planner",
+            "calls": 1,
+            "prompt_tokens": 276,
+            "completion_tokens": 958,
+            "cost_usd": 0.000397,
+            "latency_ms": 8226,
+            "summary": "planned 3 sub-questions"
+          },
+          {
+            "node": "research:sq_225fedd3a6",
+            "agent": "researcher",
+            "calls": 1,
+            "prompt_tokens": 1752,
+            "completion_tokens": 238,
+            "cost_usd": 0.000406,
+            "latency_ms": 10724,
+            "summary": "Is it true that data centers use electricity and the consump: 4 pages, 10 chunks, 5 findings"
+          },
+          {
+            "node": "research:sq_93b5250230",
+            "agent": "researcher",
+            "calls": 1,
+            "prompt_tokens": 1744,
+            "completion_tokens": 300,
+            "cost_usd": 0.000442,
+            "latency_ms": 11557,
+            "summary": "Current electricity consumption by data centers.: 4 pages, 10 chunks, 6 findings"
+          },
+          {
+            "node": "research:sq_3b79f50ed0",
+            "agent": "researcher",
+            "calls": 1,
+            "prompt_tokens": 1693,
+            "completion_tokens": 416,
+            "cost_usd": 0.000504,
+            "latency_ms": 13068,
+            "summary": "How fast is growth in data center electricity use?: 4 pages, 10 chunks, 8 findings"
+          },
+          {
+            "node": "draft",
+            "agent": "drafter",
+            "calls": 3,
+            "prompt_tokens": 1565,
+            "completion_tokens": 1400,
+            "cost_usd": 0.001075,
+            "latency_ms": 6871,
+            "summary": "drafted 30 atomic claims (round 0)"
+          },
+          {
+            "node": "verify",
+            "agent": "verifier",
+            "calls": 30,
+            "prompt_tokens": 14336,
+            "completion_tokens": 2498,
+            "cost_usd": 0.026826,
+            "latency_ms": 16622,
+            "summary": "verified 30: 30 supported, 0 partial, 0 unsupported, 0 contradicted"
+          },
+          {
+            "node": "cross_check",
+            "agent": "verifier",
+            "calls": 1,
+            "prompt_tokens": 225,
+            "completion_tokens": 0,
+            "cost_usd": 5e-06,
+            "latency_ms": 1539,
+            "summary": "0 disagreement(s) across sources"
+          },
+          {
+            "node": "synthesize",
+            "agent": "synthesizer",
+            "calls": 1,
+            "prompt_tokens": 1440,
+            "completion_tokens": 699,
+            "cost_usd": 0.000635,
+            "latency_ms": 7683,
+            "summary": "drafted report with 11 sentences from 30 claims; code added 2 verified key claim(s) the writer left out"
+          }
+        ],
+        "totals": {
+          "calls": 39,
+          "prompt_tokens": 23031,
+          "completion_tokens": 6509,
+          "total_tokens": 29540,
+          "cost_usd": 0.03029
+        }
+      },
+      "facts": [
+        {
+          "fact": "data centres used about 415 TWh of electricity in 2024",
+          "stages": {
+            "retrieved": true,
+            "extracted": true,
+            "drafted": true,
+            "verified": true,
+            "reported": true
+          },
+          "lost_at": null,
+          "furthest": "reported",
+          "citation_ok": true,
+          "rejections": [],
+          "judge_covered": true
+        },
+        {
+          "fact": "that is around 1.5% of global electricity consumption",
+          "stages": {
+            "retrieved": true,
+            "extracted": true,
+            "drafted": true,
+            "verified": true,
+            "reported": true
+          },
+          "lost_at": null,
+          "furthest": "reported",
+          "citation_ok": true,
+          "rejections": [],
+          "judge_covered": true
+        },
+        {
+          "fact": "consumption is projected to more than double to around 945 TWh by 2030",
+          "stages": {
+            "retrieved": true,
+            "extracted": true,
+            "drafted": true,
+            "verified": true,
+            "reported": true
+          },
+          "lost_at": null,
+          "furthest": "reported",
+          "citation_ok": true,
+          "rejections": [],
+          "judge_covered": true
+        }
+      ],
+      "fact_coverage": 1.0,
+      "citation_accuracy": 1.0,
+      "lost_at": {
+        "retrieved": 0,
+        "extracted": 0,
+        "drafted": 0,
+        "verified": 0,
+        "reported": 0
+      },
+      "sentences": 11,
+      "uncited_sentences": 0,
+      "claims_drafted": 30,
+      "claims_kept": 30,
+      "sources": 7,
+      "domains": [
+        "congress.gov",
+        "eia.gov",
+        "energy.gov",
+        "iea.org"
+      ],
+      "judge_fact_coverage": 1.0,
+      "must_not_claim_hits": [],
+      "seconds": 59.4
+    },
+    {
+      "id": "b06",
+      "category": "market",
+      "question": "How many electric cars were sold globally in 2024?",
+      "run_id": "bench_a3a58aec19",
+      "cost_usd": 0.02205,
+      "judge_cost_usd": 0.00187,
+      "tokens": 22143,
+      "usage": {
+        "run_id": "bench_a3a58aec19",
+        "agents": [
+          {
+            "agent": "planner",
+            "calls": 1,
+            "prompt_tokens": 274,
+            "completion_tokens": 826,
+            "total_tokens": 1100,
+            "cost_usd": 0.000344,
+            "models": [
+              "openai/gpt-5-nano"
+            ],
+            "max_prompt_tokens_per_call": 274,
+            "avg_prompt_tokens_per_call": 274
+          },
+          {
+            "agent": "researcher",
+            "calls": 3,
+            "prompt_tokens": 5769,
+            "completion_tokens": 770,
+            "total_tokens": 6539,
+            "cost_usd": 0.001328,
+            "models": [
+              "openai/gpt-4o-mini"
+            ],
+            "max_prompt_tokens_per_call": 1959,
+            "avg_prompt_tokens_per_call": 1923
+          },
+          {
+            "agent": "drafter",
+            "calls": 3,
+            "prompt_tokens": 1394,
+            "completion_tokens": 1027,
+            "total_tokens": 2421,
+            "cost_usd": 0.000825,
+            "models": [
+              "openai/gpt-4o-mini"
+            ],
+            "max_prompt_tokens_per_call": 668,
+            "avg_prompt_tokens_per_call": 465
+          },
+          {
+            "agent": "verifier",
+            "calls": 19,
+            "prompt_tokens": 8776,
+            "completion_tokens": 1704,
+            "total_tokens": 10480,
+            "cost_usd": 0.017255,
+            "models": [
+              "anthropic/claude-haiku-4.5",
+              "openai/text-embedding-3-small"
+            ],
+            "max_prompt_tokens_per_call": 618,
+            "avg_prompt_tokens_per_call": 462
+          },
+          {
+            "agent": "synthesizer",
+            "calls": 1,
+            "prompt_tokens": 1182,
+            "completion_tokens": 421,
+            "total_tokens": 1603,
+            "cost_usd": 0.00043,
+            "models": [
+              "openai/gpt-4o-mini"
+            ],
+            "max_prompt_tokens_per_call": 1182,
+            "avg_prompt_tokens_per_call": 1182
+          }
+        ],
+        "steps": [
+          {
+            "node": "plan",
+            "agent": "planner",
+            "calls": 1,
+            "prompt_tokens": 274,
+            "completion_tokens": 826,
+            "cost_usd": 0.000344,
+            "latency_ms": 6363,
+            "summary": "planned 3 sub-questions"
+          },
+          {
+            "node": "research:sq_16a6468f50",
+            "agent": "researcher",
+            "calls": 1,
+            "prompt_tokens": 1909,
+            "completion_tokens": 147,
+            "cost_usd": 0.000375,
+            "latency_ms": 10084,
+            "summary": "Data source and date reference for 2024 figure: 4 pages, 10 chunks, 4 findings"
+          },
+          {
+            "node": "research:sq_1a94baa866",
+            "agent": "researcher",
+            "calls": 1,
+            "prompt_tokens": 1959,
+            "completion_tokens": 159,
+            "cost_usd": 0.000389,
+            "latency_ms": 11056,
+            "summary": "Figure for global EV sales in 2024: 4 pages, 10 chunks, 4 findings"
+          },
+          {
+            "node": "research:sq_404e180c9b",
+            "agent": "researcher",
+            "calls": 1,
+            "prompt_tokens": 1901,
+            "completion_tokens": 464,
+            "cost_usd": 0.000564,
+            "latency_ms": 13190,
+            "summary": "Definition and scope of 'electric car' used in 2024 data: 4 pages, 10 chunks, 9 findings"
+          },
+          {
+            "node": "draft",
+            "agent": "drafter",
+            "calls": 3,
+            "prompt_tokens": 1394,
+            "completion_tokens": 1027,
+            "cost_usd": 0.000825,
+            "latency_ms": 6344,
+            "summary": "drafted 22 atomic claims (round 0)"
+          },
+          {
+            "node": "verify",
+            "agent": "verifier",
+            "calls": 18,
+            "prompt_tokens": 8734,
+            "completion_tokens": 1704,
+            "cost_usd": 0.017254,
+            "latency_ms": 9499,
+            "summary": "verified 22: 22 supported, 0 partial, 0 unsupported, 0 contradicted"
+          },
+          {
+            "node": "cross_check",
+            "agent": "verifier",
+            "calls": 1,
+            "prompt_tokens": 42,
+            "completion_tokens": 0,
+            "cost_usd": 1e-06,
+            "latency_ms": 808,
+            "summary": "0 disagreement(s) across sources"
+          },
+          {
+            "node": "synthesize",
+            "agent": "synthesizer",
+            "calls": 1,
+            "prompt_tokens": 1182,
+            "completion_tokens": 421,
+            "cost_usd": 0.00043,
+            "latency_ms": 4902,
+            "summary": "drafted report with 8 sentences from 22 claims; code added 1 verified key claim(s) the writer left out"
+          }
+        ],
+        "totals": {
+          "calls": 27,
+          "prompt_tokens": 17395,
+          "completion_tokens": 4748,
+          "total_tokens": 22143,
+          "cost_usd": 0.020182
+        }
+      },
+      "facts": [
+        {
+          "fact": "more than 17 million electric cars were sold globally in 2024",
+          "stages": {
+            "retrieved": true,
+            "extracted": true,
+            "drafted": true,
+            "verified": true,
+            "reported": true
+          },
+          "lost_at": null,
+          "furthest": "reported",
+          "citation_ok": true,
+          "rejections": [],
+          "judge_covered": true
+        },
+        {
+          "fact": "electric cars were over 20% of new car sales worldwide",
+          "stages": {
+            "retrieved": true,
+            "extracted": true,
+            "drafted": true,
+            "verified": true,
+            "reported": true
+          },
+          "lost_at": null,
+          "furthest": "reported",
+          "citation_ok": true,
+          "rejections": [],
+          "judge_covered": true
+        },
+        {
+          "fact": "China sold over 11 million electric cars, almost half of its car sales",
+          "stages": {
+            "retrieved": true,
+            "extracted": true,
+            "drafted": true,
+            "verified": true,
+            "reported": true
+          },
+          "lost_at": null,
+          "furthest": "reported",
+          "citation_ok": true,
+          "rejections": [],
+          "judge_covered": false
+        }
+      ],
+      "fact_coverage": 1.0,
+      "citation_accuracy": 1.0,
+      "lost_at": {
+        "retrieved": 0,
+        "extracted": 0,
+        "drafted": 0,
+        "verified": 0,
+        "reported": 0
+      },
+      "sentences": 8,
+      "uncited_sentences": 0,
+      "claims_drafted": 22,
+      "claims_kept": 22,
+      "sources": 12,
+      "domains": [
+        "anl.gov",
+        "coxautoinc.com",
+        "eea.europa.eu",
+        "energy.gov",
+        "evwire.com",
+        "finance.yahoo.com",
+        "iea.org",
+        "sneresearch.com",
+        "virta.global"
+      ],
+      "judge_fact_coverage": 0.6667,
+      "must_not_claim_hits": [],
+      "seconds": 47.7
+    },
+    {
+      "id": "b07",
+      "category": "science",
+      "question": "How much has the planet warmed, according to the IPCC's latest synthesis report?",
+      "run_id": "bench_efe71590de",
+      "cost_usd": 0.01215,
+      "judge_cost_usd": 0.00194,
+      "tokens": 17876,
+      "usage": {
+        "run_id": "bench_efe71590de",
+        "agents": [
+          {
+            "agent": "planner",
+            "calls": 2,
+            "prompt_tokens": 477,
+            "completion_tokens": 1360,
+            "total_tokens": 1837,
+            "cost_usd": 0.000568,
+            "models": [
+              "openai/gpt-5-nano"
+            ],
+            "max_prompt_tokens_per_call": 279,
+            "avg_prompt_tokens_per_call": 238
+          },
+          {
+            "agent": "researcher",
+            "calls": 4,
+            "prompt_tokens": 7630,
+            "completion_tokens": 614,
+            "total_tokens": 8244,
+            "cost_usd": 0.001512,
+            "models": [
+              "openai/gpt-4o-mini"
+            ],
+            "max_prompt_tokens_per_call": 2025,
+            "avg_prompt_tokens_per_call": 1908
+          },
+          {
+            "agent": "drafter",
+            "calls": 4,
+            "prompt_tokens": 1467,
+            "completion_tokens": 574,
+            "total_tokens": 2041,
+            "cost_usd": 0.000564,
+            "models": [
+              "openai/gpt-4o-mini"
+            ],
+            "max_prompt_tokens_per_call": 418,
+            "avg_prompt_tokens_per_call": 367
+          },
+          {
+            "agent": "verifier",
+            "calls": 9,
+            "prompt_tokens": 3927,
+            "completion_tokens": 691,
+            "total_tokens": 4618,
+            "cost_usd": 0.00726,
+            "models": [
+              "anthropic/claude-haiku-4.5",
+              "openai/text-embedding-3-small"
+            ],
+            "max_prompt_tokens_per_call": 520,
+            "avg_prompt_tokens_per_call": 436
+          },
+          {
+            "agent": "synthesizer",
+            "calls": 1,
+            "prompt_tokens": 831,
+            "completion_tokens": 305,
+            "total_tokens": 1136,
+            "cost_usd": 0.000308,
+            "models": [
+              "openai/gpt-4o-mini"
+            ],
+            "max_prompt_tokens_per_call": 831,
+            "avg_prompt_tokens_per_call": 831
+          }
+        ],
+        "steps": [
+          {
+            "node": "plan",
+            "agent": "planner",
+            "calls": 1,
+            "prompt_tokens": 279,
+            "completion_tokens": 1061,
+            "cost_usd": 0.000438,
+            "latency_ms": 9644,
+            "summary": "planned 3 sub-questions"
+          },
+          {
+            "node": "research:sq_66923413d7",
+            "agent": "researcher",
+            "calls": 1,
+            "prompt_tokens": 1797,
+            "completion_tokens": 203,
+            "cost_usd": 0.000391,
+            "latency_ms": 8438,
+            "summary": "Is it true that iPCC's latest synthesis report exists and pr: 4 pages, 10 chunks, 5 findings"
+          },
+          {
+            "node": "research:sq_554b24b470",
+            "agent": "researcher",
+            "calls": 1,
+            "prompt_tokens": 1865,
+            "completion_tokens": 124,
+            "cost_usd": 0.000354,
+            "latency_ms": 11225,
+            "summary": "When was the IPCC's latest synthesis report published?: 4 pages, 10 chunks, 3 findings"
+          },
+          {
+            "node": "research:sq_14805f220d",
+            "agent": "researcher",
+            "calls": 1,
+            "prompt_tokens": 1943,
+            "completion_tokens": 165,
+            "cost_usd": 0.00039,
+            "latency_ms": 12383,
+            "summary": "What warming amount does the IPCC's latest synthesis report : 4 pages, 10 chunks, 3 findings"
+          },
+          {
+            "node": "draft",
+            "agent": "drafter",
+            "calls": 3,
+            "prompt_tokens": 1133,
+            "completion_tokens": 432,
+            "cost_usd": 0.000429,
+            "latency_ms": 3973,
+            "summary": "drafted 9 atomic claims (round 0)"
+          },
+          {
+            "node": "verify",
+            "agent": "verifier",
+            "calls": 7,
+            "prompt_tokens": 3288,
+            "completion_tokens": 620,
+            "cost_usd": 0.006388,
+            "latency_ms": 4858,
+            "summary": "verified 9: 9 supported, 0 partial, 0 unsupported, 0 contradicted"
+          },
+          {
+            "node": "gap_plan",
+            "agent": "planner",
+            "calls": 1,
+            "prompt_tokens": 198,
+            "completion_tokens": 299,
+            "cost_usd": 0.00013,
+            "latency_ms": 4993,
+            "summary": "loop-back: new queries for 1 sub-question(s)"
+          },
+          {
+            "node": "research:sq_554b24b470",
+            "agent": "researcher",
+            "calls": 1,
+            "prompt_tokens": 2025,
+            "completion_tokens": 122,
+            "cost_usd": 0.000377,
+            "latency_ms": 11726,
+            "summary": "When was the IPCC's latest synthesis report published?: 4 pages, 10 chunks, 3 findings"
+          },
+          {
+            "node": "draft",
+            "agent": "drafter",
+            "calls": 1,
+            "prompt_tokens": 334,
+            "completion_tokens": 142,
+            "cost_usd": 0.000135,
+            "latency_ms": 2556,
+            "summary": "drafted 3 atomic claims (round 1)"
+          },
+          {
+            "node": "verify",
+            "agent": "verifier",
+            "calls": 1,
+            "prompt_tokens": 514,
+            "completion_tokens": 71,
+            "cost_usd": 0.000869,
+            "latency_ms": 1526,
+            "summary": "verified 3: 3 supported, 0 partial, 0 unsupported, 0 contradicted"
+          },
+          {
+            "node": "cross_check",
+            "agent": "verifier",
+            "calls": 1,
+            "prompt_tokens": 125,
+            "completion_tokens": 0,
+            "cost_usd": 3e-06,
+            "latency_ms": 1004,
+            "summary": "0 disagreement(s) across sources"
+          },
+          {
+            "node": "synthesize",
+            "agent": "synthesizer",
+            "calls": 1,
+            "prompt_tokens": 831,
+            "completion_tokens": 305,
+            "cost_usd": 0.000308,
+            "latency_ms": 4555,
+            "summary": "drafted report with 5 sentences from 12 claims"
+          }
+        ],
+        "totals": {
+          "calls": 20,
+          "prompt_tokens": 14332,
+          "completion_tokens": 3544,
+          "total_tokens": 17876,
+          "cost_usd": 0.010212
+        }
+      },
+      "facts": [
+        {
+          "fact": "global surface temperature was about 1.1\u00b0C above 1850-1900 in 2011-2020",
+          "stages": {
+            "retrieved": true,
+            "extracted": true,
+            "drafted": true,
+            "verified": true,
+            "reported": true
+          },
+          "lost_at": null,
+          "furthest": "reported",
+          "citation_ok": true,
+          "rejections": [],
+          "judge_covered": true
+        },
+        {
+          "fact": "the likely range is 0.95 to 1.20\u00b0C (best estimate 1.09\u00b0C)",
+          "stages": {
+            "retrieved": false,
+            "extracted": false,
+            "drafted": false,
+            "verified": false,
+            "reported": false
+          },
+          "lost_at": "retrieved",
+          "furthest": null,
+          "citation_ok": null,
+          "rejections": [],
+          "judge_covered": false
+        },
+        {
+          "fact": "human activities have unequivocally caused the warming",
+          "stages": {
+            "retrieved": true,
+            "extracted": true,
+            "drafted": false,
+            "verified": false,
+            "reported": false
+          },
+          "lost_at": "drafted",
+          "furthest": "extracted",
+          "citation_ok": null,
+          "rejections": [],
+          "judge_covered": false
+        }
+      ],
+      "fact_coverage": 0.3333,
+      "citation_accuracy": 1.0,
+      "lost_at": {
+        "retrieved": 1,
+        "extracted": 0,
+        "drafted": 1,
+        "verified": 0,
+        "reported": 0
+      },
+      "sentences": 5,
+      "uncited_sentences": 0,
+      "claims_drafted": 12,
+      "claims_kept": 12,
+      "sources": 12,
+      "domains": [
+        "civil-protection-knowledge-network.europa.eu",
+        "climate.gov",
+        "digitallibrary.un.org",
+        "ipcc.ch",
+        "ntrs.nasa.gov",
+        "rainforestfoundation.org",
+        "researchportalplus.anu.edu.au"
+      ],
+      "judge_fact_coverage": 0.3333,
+      "must_not_claim_hits": [],
+      "seconds": 63.6
+    },
+    {
+      "id": "b08",
+      "category": "false_premise",
+      "question": "Why did the EU ban the sale of new petrol cars in 2024?",
+      "run_id": "bench_01a869f7a0",
+      "cost_usd": 0.02197,
+      "judge_cost_usd": 0.0017,
+      "tokens": 24638,
+      "usage": {
+        "run_id": "bench_01a869f7a0",
+        "agents": [
+          {
+            "agent": "planner",
+            "calls": 2,
+            "prompt_tokens": 483,
+            "completion_tokens": 1271,
+            "total_tokens": 1754,
+            "cost_usd": 0.000532,
+            "models": [
+              "openai/gpt-5-nano"
+            ],
+            "max_prompt_tokens_per_call": 278,
+            "avg_prompt_tokens_per_call": 242
+          },
+          {
+            "agent": "researcher",
+            "calls": 4,
+            "prompt_tokens": 7245,
+            "completion_tokens": 951,
+            "total_tokens": 8196,
+            "cost_usd": 0.001658,
+            "models": [
+              "openai/gpt-4o-mini"
+            ],
+            "max_prompt_tokens_per_call": 1881,
+            "avg_prompt_tokens_per_call": 1811
+          },
+          {
+            "agent": "drafter",
+            "calls": 4,
+            "prompt_tokens": 1786,
+            "completion_tokens": 986,
+            "total_tokens": 2772,
+            "cost_usd": 0.00086,
+            "models": [
+              "openai/gpt-4o-mini"
+            ],
+            "max_prompt_tokens_per_call": 636,
+            "avg_prompt_tokens_per_call": 446
+          },
+          {
+            "agent": "verifier",
+            "calls": 19,
+            "prompt_tokens": 8685,
+            "completion_tokens": 1679,
+            "total_tokens": 10364,
+            "cost_usd": 0.016805,
+            "models": [
+              "anthropic/claude-haiku-4.5",
+              "openai/text-embedding-3-small"
+            ],
+            "max_prompt_tokens_per_call": 509,
+            "avg_prompt_tokens_per_call": 457
+          },
+          {
+            "agent": "synthesizer",
+            "calls": 1,
+            "prompt_tokens": 1145,
+            "completion_tokens": 407,
+            "total_tokens": 1552,
+            "cost_usd": 0.000416,
+            "models": [
+              "openai/gpt-4o-mini"
+            ],
+            "max_prompt_tokens_per_call": 1145,
+            "avg_prompt_tokens_per_call": 1145
+          }
+        ],
+        "steps": [
+          {
+            "node": "plan",
+            "agent": "planner",
+            "calls": 1,
+            "prompt_tokens": 278,
+            "completion_tokens": 844,
+            "cost_usd": 0.000351,
+            "latency_ms": 532,
+            "summary": "planned 3 sub-questions"
+          },
+          {
+            "node": "research:sq_b1d3152526",
+            "agent": "researcher",
+            "calls": 1,
+            "prompt_tokens": 1649,
+            "completion_tokens": 36,
+            "cost_usd": 0.000269,
+            "latency_ms": 8262,
+            "summary": "Is it true that eU banned sale of new petrol cars in 2024?: 4 pages, 10 chunks, 1 findings"
+          },
+          {
+            "node": "research:sq_95f0c9de28",
+            "agent": "researcher",
+            "calls": 1,
+            "prompt_tokens": 1872,
+            "completion_tokens": 235,
+            "cost_usd": 0.000422,
+            "latency_ms": 10474,
+            "summary": "Which regulation enacted the ban?: 4 pages, 10 chunks, 5 findings"
+          },
+          {
+            "node": "research:sq_43150becfd",
+            "agent": "researcher",
+            "calls": 1,
+            "prompt_tokens": 1881,
+            "completion_tokens": 441,
+            "cost_usd": 0.000547,
+            "latency_ms": 13826,
+            "summary": "What policy timeline led to the 2024 petrol ban?: 4 pages, 10 chunks, 10 findings"
+          },
+          {
+            "node": "draft",
+            "agent": "drafter",
+            "calls": 3,
+            "prompt_tokens": 1332,
+            "completion_tokens": 800,
+            "cost_usd": 0.00068,
+            "latency_ms": 5663,
+            "summary": "drafted 17 atomic claims (round 0)"
+          },
+          {
+            "node": "verify",
+            "agent": "verifier",
+            "calls": 14,
+            "prompt_tokens": 6504,
+            "completion_tokens": 1295,
+            "cost_usd": 0.012979,
+            "latency_ms": 9348,
+            "summary": "verified 18: 16 supported, 1 partial, 1 unsupported, 0 contradicted"
+          },
+          {
+            "node": "gap_plan",
+            "agent": "planner",
+            "calls": 1,
+            "prompt_tokens": 205,
+            "completion_tokens": 427,
+            "cost_usd": 0.000181,
+            "latency_ms": 4703,
+            "summary": "loop-back: new queries for 1 sub-question(s)"
+          },
+          {
+            "node": "research:sq_b1d3152526",
+            "agent": "researcher",
+            "calls": 1,
+            "prompt_tokens": 1843,
+            "completion_tokens": 239,
+            "cost_usd": 0.00042,
+            "latency_ms": 12521,
+            "summary": "Is it true that eU banned sale of new petrol cars in 2024?: 4 pages, 10 chunks, 4 findings"
+          },
+          {
+            "node": "draft",
+            "agent": "drafter",
+            "calls": 1,
+            "prompt_tokens": 454,
+            "completion_tokens": 186,
+            "cost_usd": 0.00018,
+            "latency_ms": 2349,
+            "summary": "drafted 4 atomic claims (round 1)"
+          },
+          {
+            "node": "verify",
+            "agent": "verifier",
+            "calls": 4,
+            "prompt_tokens": 1900,
+            "completion_tokens": 384,
+            "cost_usd": 0.00382,
+            "latency_ms": 3330,
+            "summary": "verified 4: 4 supported, 0 partial, 0 unsupported, 0 contradicted"
+          },
+          {
+            "node": "cross_check",
+            "agent": "verifier",
+            "calls": 1,
+            "prompt_tokens": 281,
+            "completion_tokens": 0,
+            "cost_usd": 6e-06,
+            "latency_ms": 1390,
+            "summary": "0 disagreement(s) across sources"
+          },
+          {
+            "node": "synthesize",
+            "agent": "synthesizer",
+            "calls": 1,
+            "prompt_tokens": 1145,
+            "completion_tokens": 407,
+            "cost_usd": 0.000416,
+            "latency_ms": 5004,
+            "summary": "drafted report with 5 sentences from 20 claims"
+          }
+        ],
+        "totals": {
+          "calls": 30,
+          "prompt_tokens": 19344,
+          "completion_tokens": 5294,
+          "total_tokens": 24638,
+          "cost_usd": 0.020271
+        }
+      },
+      "facts": [
+        {
+          "fact": "there was no EU ban on selling new petrol cars in 2024",
+          "stages": {
+            "retrieved": false,
+            "extracted": false,
+            "drafted": false,
+            "verified": false,
+            "reported": false
+          },
+          "lost_at": "retrieved",
+          "furthest": null,
+          "citation_ok": null,
+          "rejections": [],
+          "judge_covered": true
+        },
+        {
+          "fact": "Regulation (EU) 2023/851 set a 100% CO2 reduction target for new cars and vans from 2035",
+          "stages": {
+            "retrieved": true,
+            "extracted": true,
+            "drafted": true,
+            "verified": true,
+            "reported": true
+          },
+          "lost_at": null,
+          "furthest": "reported",
+          "citation_ok": true,
+          "rejections": [
+            {
+              "claim": "From 2035, new cars sold in the EU should have zero CO\u2082 emissions while driving.",
+              "label": "PARTIAL",
+              "reason": "Source states the claim was true until recently; now changed to 90% reduction, not zero.",
+              "guard_downgraded": false
+            }
+          ],
+          "judge_covered": true
+        },
+        {
+          "fact": "a December 2025 Commission proposal would lower the 2035 target to 90%, and it has not been adopted",
+          "stages": {
+            "retrieved": true,
+            "extracted": false,
+            "drafted": true,
+            "verified": true,
+            "reported": false
+          },
+          "lost_at": "extracted",
+          "furthest": "verified",
+          "citation_ok": null,
+          "rejections": [],
+          "judge_covered": false
+        }
+      ],
+      "fact_coverage": 0.3333,
+      "citation_accuracy": 1.0,
+      "lost_at": {
+        "retrieved": 1,
+        "extracted": 1,
+        "drafted": 0,
+        "verified": 0,
+        "reported": 0
+      },
+      "sentences": 5,
+      "uncited_sentences": 0,
+      "claims_drafted": 22,
+      "claims_kept": 20,
+      "sources": 16,
+      "domains": [
+        "bbc.com",
+        "climate.ec.europa.eu",
+        "congress.gov",
+        "ecarstrade.com",
+        "eea.europa.eu",
+        "eelp.law.harvard.edu",
+        "electriccarscheme.com",
+        "en.wikipedia.org",
+        "europarl.europa.eu",
+        "nilc.org",
+        "theconversation.com",
+        "youtube.com"
+      ],
+      "judge_fact_coverage": 0.6667,
+      "must_not_claim_hits": [],
+      "premise_corrected": true,
+      "seconds": 65.3
+    },
+    {
+      "id": "b09",
+      "category": "false_premise",
+      "question": "How much did Bitcoin's supply cap increase after the 2024 halving?",
+      "run_id": "bench_d56495ac65",
+      "cost_usd": 0.02357,
+      "judge_cost_usd": 0.00189,
+      "tokens": 25349,
+      "usage": {
+        "run_id": "bench_d56495ac65",
+        "agents": [
+          {
+            "agent": "planner",
+            "calls": 2,
+            "prompt_tokens": 474,
+            "completion_tokens": 1558,
+            "total_tokens": 2032,
+            "cost_usd": 0.000647,
+            "models": [
+              "openai/gpt-5-nano"
+            ],
+            "max_prompt_tokens_per_call": 278,
+            "avg_prompt_tokens_per_call": 237
+          },
+          {
+            "agent": "researcher",
+            "calls": 4,
+            "prompt_tokens": 7219,
+            "completion_tokens": 651,
+            "total_tokens": 7870,
+            "cost_usd": 0.001474,
+            "models": [
+              "openai/gpt-4o-mini"
+            ],
+            "max_prompt_tokens_per_call": 1882,
+            "avg_prompt_tokens_per_call": 1805
+          },
+          {
+            "agent": "drafter",
+            "calls": 4,
+            "prompt_tokens": 1503,
+            "completion_tokens": 922,
+            "total_tokens": 2425,
+            "cost_usd": 0.000779,
+            "models": [
+              "openai/gpt-4o-mini"
+            ],
+            "max_prompt_tokens_per_call": 454,
+            "avg_prompt_tokens_per_call": 376
+          },
+          {
+            "agent": "verifier",
+            "calls": 20,
+            "prompt_tokens": 9561,
+            "completion_tokens": 1768,
+            "total_tokens": 11329,
+            "cost_usd": 0.018248,
+            "models": [
+              "anthropic/claude-haiku-4.5",
+              "openai/text-embedding-3-small"
+            ],
+            "max_prompt_tokens_per_call": 843,
+            "avg_prompt_tokens_per_call": 478
+          },
+          {
+            "agent": "synthesizer",
+            "calls": 1,
+            "prompt_tokens": 1061,
+            "completion_tokens": 632,
+            "total_tokens": 1693,
+            "cost_usd": 0.000538,
+            "models": [
+              "openai/gpt-4o-mini"
+            ],
+            "max_prompt_tokens_per_call": 1061,
+            "avg_prompt_tokens_per_call": 1061
+          }
+        ],
+        "steps": [
+          {
+            "node": "plan",
+            "agent": "planner",
+            "calls": 1,
+            "prompt_tokens": 278,
+            "completion_tokens": 1137,
+            "cost_usd": 0.000469,
+            "latency_ms": 11421,
+            "summary": "planned 3 sub-questions"
+          },
+          {
+            "node": "research:sq_a3c97fb7fc",
+            "agent": "researcher",
+            "calls": 1,
+            "prompt_tokens": 1806,
+            "completion_tokens": 162,
+            "cost_usd": 0.000368,
+            "latency_ms": 6378,
+            "summary": "Specify the 2024 halving date and its effect on issuance rat: 4 pages, 10 chunks, 3 findings"
+          },
+          {
+            "node": "research:sq_b500961224",
+            "agent": "researcher",
+            "calls": 1,
+            "prompt_tokens": 1790,
+            "completion_tokens": 199,
+            "cost_usd": 0.000388,
+            "latency_ms": 9053,
+            "summary": "Identify the Bitcoin supply cap and whether it is fixed.: 4 pages, 10 chunks, 5 findings"
+          },
+          {
+            "node": "research:sq_ca5bef2549",
+            "agent": "researcher",
+            "calls": 1,
+            "prompt_tokens": 1882,
+            "completion_tokens": 46,
+            "cost_usd": 0.00031,
+            "latency_ms": 9362,
+            "summary": "Compute change in supply cap after the 2024 halving.: 4 pages, 10 chunks, 1 findings"
+          },
+          {
+            "node": "draft",
+            "agent": "drafter",
+            "calls": 3,
+            "prompt_tokens": 1049,
+            "completion_tokens": 644,
+            "cost_usd": 0.000544,
+            "latency_ms": 3102,
+            "summary": "drafted 14 atomic claims (round 0)"
+          },
+          {
+            "node": "verify",
+            "agent": "verifier",
+            "calls": 14,
+            "prompt_tokens": 7123,
+            "completion_tokens": 1289,
+            "cost_usd": 0.013568,
+            "latency_ms": 8587,
+            "summary": "verified 16: 14 supported, 2 partial, 0 unsupported, 0 contradicted"
+          },
+          {
+            "node": "gap_plan",
+            "agent": "planner",
+            "calls": 1,
+            "prompt_tokens": 196,
+            "completion_tokens": 421,
+            "cost_usd": 0.000178,
+            "latency_ms": 4135,
+            "summary": "loop-back: new queries for 1 sub-question(s)"
+          },
+          {
+            "node": "research:sq_ca5bef2549",
+            "agent": "researcher",
+            "calls": 1,
+            "prompt_tokens": 1741,
+            "completion_tokens": 244,
+            "cost_usd": 0.000408,
+            "latency_ms": 11326,
+            "summary": "Compute change in supply cap after the 2024 halving.: 4 pages, 10 chunks, 5 findings"
+          },
+          {
+            "node": "draft",
+            "agent": "drafter",
+            "calls": 1,
+            "prompt_tokens": 454,
+            "completion_tokens": 278,
+            "cost_usd": 0.000235,
+            "latency_ms": 4061,
+            "summary": "drafted 5 atomic claims (round 1)"
+          },
+          {
+            "node": "verify",
+            "agent": "verifier",
+            "calls": 5,
+            "prompt_tokens": 2282,
+            "completion_tokens": 479,
+            "cost_usd": 0.004677,
+            "latency_ms": 3407,
+            "summary": "verified 5: 5 supported, 0 partial, 0 unsupported, 0 contradicted"
+          },
+          {
+            "node": "cross_check",
+            "agent": "verifier",
+            "calls": 1,
+            "prompt_tokens": 156,
+            "completion_tokens": 0,
+            "cost_usd": 3e-06,
+            "latency_ms": 1063,
+            "summary": "0 disagreement(s) across sources"
+          },
+          {
+            "node": "synthesize",
+            "agent": "synthesizer",
+            "calls": 1,
+            "prompt_tokens": 1061,
+            "completion_tokens": 632,
+            "cost_usd": 0.000538,
+            "latency_ms": 6600,
+            "summary": "drafted report with 11 sentences from 19 claims; code added 4 verified key claim(s) the writer left out"
+          }
+        ],
+        "totals": {
+          "calls": 31,
+          "prompt_tokens": 19818,
+          "completion_tokens": 5531,
+          "total_tokens": 25349,
+          "cost_usd": 0.021686
+        }
+      },
+      "facts": [
+        {
+          "fact": "the supply cap did not change; it remains 21 million bitcoin",
+          "stages": {
+            "retrieved": true,
+            "extracted": true,
+            "drafted": true,
+            "verified": true,
+            "reported": true
+          },
+          "lost_at": null,
+          "furthest": "reported",
+          "citation_ok": true,
+          "rejections": [],
+          "judge_covered": true
+        },
+        {
+          "fact": "the April 2024 halving happened at block 840,000 on 20 April 2024",
+          "stages": {
+            "retrieved": true,
+            "extracted": true,
+            "drafted": true,
+            "verified": true,
+            "reported": true
+          },
+          "lost_at": null,
+          "furthest": "reported",
+          "citation_ok": false,
+          "rejections": [],
+          "judge_covered": true
+        },
+        {
+          "fact": "the block reward was cut from 6.25 to 3.125 BTC",
+          "stages": {
+            "retrieved": true,
+            "extracted": true,
+            "drafted": true,
+            "verified": true,
+            "reported": true
+          },
+          "lost_at": null,
+          "furthest": "reported",
+          "citation_ok": true,
+          "rejections": [],
+          "judge_covered": true
+        }
+      ],
+      "fact_coverage": 1.0,
+      "citation_accuracy": 0.6667,
+      "lost_at": {
+        "retrieved": 0,
+        "extracted": 0,
+        "drafted": 0,
+        "verified": 0,
+        "reported": 0
+      },
+      "sentences": 11,
+      "uncited_sentences": 0,
+      "claims_drafted": 21,
+      "claims_kept": 19,
+      "sources": 14,
+      "domains": [
+        "bitcoinsuisse.com",
+        "blog.bitbox.swiss",
+        "cmegroup.com",
+        "coingecko.com",
+        "coinledger.io",
+        "cryptorank.io",
+        "finance.yahoo.com",
+        "in.investing.com",
+        "ishares.com",
+        "kellypartners.com.au",
+        "kraken.com",
+        "sygnum.com",
+        "youtube.com"
+      ],
+      "judge_fact_coverage": 1.0,
+      "must_not_claim_hits": [],
+      "premise_corrected": true,
+      "seconds": 68.4
+    },
+    {
+      "id": "b10",
+      "category": "tax_law",
+      "question": "Which data protection laws apply to companies in the UAE?",
+      "run_id": "bench_4c28e3f92e",
+      "cost_usd": 0.02011,
+      "judge_cost_usd": 0.00122,
+      "tokens": 23267,
+      "usage": {
+        "run_id": "bench_4c28e3f92e",
+        "agents": [
+          {
+            "agent": "planner",
+            "calls": 2,
+            "prompt_tokens": 461,
+            "completion_tokens": 2091,
+            "total_tokens": 2552,
+            "cost_usd": 0.00086,
+            "models": [
+              "openai/gpt-5-nano"
+            ],
+            "max_prompt_tokens_per_call": 273,
+            "avg_prompt_tokens_per_call": 230
+          },
+          {
+            "agent": "researcher",
+            "calls": 4,
+            "prompt_tokens": 6539,
+            "completion_tokens": 724,
+            "total_tokens": 7263,
+            "cost_usd": 0.001414,
+            "models": [
+              "openai/gpt-4o-mini"
+            ],
+            "max_prompt_tokens_per_call": 1648,
+            "avg_prompt_tokens_per_call": 1635
+          },
+          {
+            "agent": "drafter",
+            "calls": 3,
+            "prompt_tokens": 1347,
+            "completion_tokens": 911,
+            "total_tokens": 2258,
+            "cost_usd": 0.000748,
+            "models": [
+              "openai/gpt-4o-mini"
+            ],
+            "max_prompt_tokens_per_call": 507,
+            "avg_prompt_tokens_per_call": 449
+          },
+          {
+            "agent": "verifier",
+            "calls": 17,
+            "prompt_tokens": 8036,
+            "completion_tokens": 1490,
+            "total_tokens": 9526,
+            "cost_usd": 0.015346,
+            "models": [
+              "anthropic/claude-haiku-4.5",
+              "openai/text-embedding-3-small"
+            ],
+            "max_prompt_tokens_per_call": 793,
+            "avg_prompt_tokens_per_call": 473
+          },
+          {
+            "agent": "synthesizer",
+            "calls": 1,
+            "prompt_tokens": 1066,
+            "completion_tokens": 602,
+            "total_tokens": 1668,
+            "cost_usd": 0.000521,
+            "models": [
+              "openai/gpt-4o-mini"
+            ],
+            "max_prompt_tokens_per_call": 1066,
+            "avg_prompt_tokens_per_call": 1066
+          }
+        ],
+        "steps": [
+          {
+            "node": "plan",
+            "agent": "planner",
+            "calls": 1,
+            "prompt_tokens": 273,
+            "completion_tokens": 1338,
+            "cost_usd": 0.000549,
+            "latency_ms": 11074,
+            "summary": "planned 3 sub-questions"
+          },
+          {
+            "node": "research:sq_5feae3ba21",
+            "agent": "researcher",
+            "calls": 1,
+            "prompt_tokens": 1609,
+            "completion_tokens": 5,
+            "cost_usd": 0.000244,
+            "latency_ms": 9306,
+            "summary": "Explain who is covered and when under UAE data protection re: 4 pages, 10 chunks, 0 findings"
+          },
+          {
+            "node": "research:sq_1576f53158",
+            "agent": "researcher",
+            "calls": 1,
+            "prompt_tokens": 1642,
+            "completion_tokens": 170,
+            "cost_usd": 0.000348,
+            "latency_ms": 10331,
+            "summary": "Identify the primary federal data protection law applying to: 4 pages, 10 chunks, 3 findings"
+          },
+          {
+            "node": "research:sq_c75548c199",
+            "agent": "researcher",
+            "calls": 1,
+            "prompt_tokens": 1648,
+            "completion_tokens": 247,
+            "cost_usd": 0.000395,
+            "latency_ms": 10740,
+            "summary": "Identify major emirate-level data protection regimes in Duba: 4 pages, 10 chunks, 5 findings"
+          },
+          {
+            "node": "draft",
+            "agent": "drafter",
+            "calls": 2,
+            "prompt_tokens": 840,
+            "completion_tokens": 597,
+            "cost_usd": 0.000484,
+            "latency_ms": 4663,
+            "summary": "drafted 12 atomic claims (round 0)"
+          },
+          {
+            "node": "verify",
+            "agent": "verifier",
+            "calls": 11,
+            "prompt_tokens": 5554,
+            "completion_tokens": 1048,
+            "cost_usd": 0.010794,
+            "latency_ms": 7749,
+            "summary": "verified 12: 12 supported, 0 partial, 0 unsupported, 0 contradicted"
+          },
+          {
+            "node": "gap_plan",
+            "agent": "planner",
+            "calls": 1,
+            "prompt_tokens": 188,
+            "completion_tokens": 753,
+            "cost_usd": 0.000311,
+            "latency_ms": 6191,
+            "summary": "loop-back: new queries for 1 sub-question(s)"
+          },
+          {
+            "node": "research:sq_5feae3ba21",
+            "agent": "researcher",
+            "calls": 1,
+            "prompt_tokens": 1640,
+            "completion_tokens": 302,
+            "cost_usd": 0.000427,
+            "latency_ms": 10277,
+            "summary": "Explain who is covered and when under UAE data protection re: 4 pages, 10 chunks, 7 findings"
+          },
+          {
+            "node": "draft",
+            "agent": "drafter",
+            "calls": 1,
+            "prompt_tokens": 507,
+            "completion_tokens": 314,
+            "cost_usd": 0.000264,
+            "latency_ms": 3618,
+            "summary": "drafted 6 atomic claims (round 1)"
+          },
+          {
+            "node": "verify",
+            "agent": "verifier",
+            "calls": 5,
+            "prompt_tokens": 2339,
+            "completion_tokens": 442,
+            "cost_usd": 0.004549,
+            "latency_ms": 3440,
+            "summary": "verified 6: 6 supported, 0 partial, 0 unsupported, 0 contradicted"
+          },
+          {
+            "node": "cross_check",
+            "agent": "verifier",
+            "calls": 1,
+            "prompt_tokens": 143,
+            "completion_tokens": 0,
+            "cost_usd": 3e-06,
+            "latency_ms": 1008,
+            "summary": "0 disagreement(s) across sources"
+          },
+          {
+            "node": "synthesize",
+            "agent": "synthesizer",
+            "calls": 1,
+            "prompt_tokens": 1066,
+            "completion_tokens": 602,
+            "cost_usd": 0.000521,
+            "latency_ms": 6684,
+            "summary": "drafted report with 9 sentences from 18 claims"
+          }
+        ],
+        "totals": {
+          "calls": 27,
+          "prompt_tokens": 17449,
+          "completion_tokens": 5818,
+          "total_tokens": 23267,
+          "cost_usd": 0.018889
+        }
+      },
+      "facts": [
+        {
+          "fact": "Federal Decree-Law No. 45 of 2021 on the Protection of Personal Data",
+          "stages": {
+            "retrieved": true,
+            "extracted": true,
+            "drafted": true,
+            "verified": true,
+            "reported": true
+          },
+          "lost_at": null,
+          "furthest": "reported",
+          "citation_ok": true,
+          "rejections": [],
+          "judge_covered": true
+        },
+        {
+          "fact": "DIFC Data Protection Law No. 5 of 2020 applies in the DIFC",
+          "stages": {
+            "retrieved": true,
+            "extracted": true,
+            "drafted": true,
+            "verified": true,
+            "reported": true
+          },
+          "lost_at": null,
+          "furthest": "reported",
+          "citation_ok": true,
+          "rejections": [],
+          "judge_covered": true
+        },
+        {
+          "fact": "health data is covered by Federal Law No. 2 of 2019 on the use of ICT in health fields",
+          "stages": {
+            "retrieved": false,
+            "extracted": false,
+            "drafted": false,
+            "verified": false,
+            "reported": false
+          },
+          "lost_at": "retrieved",
+          "furthest": null,
+          "citation_ok": null,
+          "rejections": [],
+          "judge_covered": false
+        }
+      ],
+      "fact_coverage": 0.6667,
+      "citation_accuracy": 1.0,
+      "lost_at": {
+        "retrieved": 1,
+        "extracted": 0,
+        "drafted": 0,
+        "verified": 0,
+        "reported": 0
+      },
+      "sentences": 9,
+      "uncited_sentences": 0,
+      "claims_drafted": 18,
+      "claims_kept": 18,
+      "sources": 13,
+      "domains": [
+        "bricker.com",
+        "cms.gov",
+        "cookieyes.com",
+        "csrc.nist.gov",
+        "difc.com",
+        "en.npc.gov.cn.cdurl.cn",
+        "openresearch-repository.anu.edu.au",
+        "pwc.com",
+        "securiti.ai",
+        "trade.gov",
+        "u.ae",
+        "v-comply.com"
+      ],
+      "judge_fact_coverage": 0.6667,
+      "must_not_claim_hits": [],
+      "seconds": 70.4
+    }
+  ]
+}

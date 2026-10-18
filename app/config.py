@@ -20,7 +20,12 @@ class Settings(BaseSettings):
 
     # Models per agent. Run `python -m scripts.mesh_account` to see live prices and
     # confirm every id exists on your account before changing these.
-    model_planner: str = "openai/gpt-4o-mini"  # 1-3 short calls per run
+    # Reasoning model: plans decide every search, so the planner is where thinking pays off most
+    # (benchmark runs 1-5 swung up to 22 points on plan quality). 1-3 short calls per run.
+    model_planner: str = "openai/gpt-5-nano"
+    model_planner_fallback: str = "openai/gpt-oss-120b"  # used if the planner call fails or plans nothing
+    # gpt-5-nano at its default ("medium") effort spent all 2500 tokens thinking and returned nothing
+    planner_reasoning_effort: str = "low"
     model_researcher: str = "openai/gpt-4o-mini"  # highest input volume: must be cheap
     model_drafter: str = "openai/gpt-4o-mini"
     model_verifier: str = "anthropic/claude-haiku-4.5"  # accuracy-critical; different family from drafter

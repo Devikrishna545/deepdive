@@ -16,7 +16,11 @@
   lost at the writer (-> design decision 30; replay recovered the 2 b05 facts). Run 4 `171219Z`
   77% strict / 73% judge, but b08 regressed (no premise from the planner -> must-not hit). Run 5 `180904Z`
   (premise backstop, plan retry, figure check, new planner/writer prompts): 55% strict / 48% judge,
-  worse plans ("2026" in IPCC queries, search losses 3 -> 7); code reverted to the run-4 state., 5 never retrieved, 2 not extracted (-> 31).
+  worse plans ("2026" in IPCC queries, search losses 3 -> 7); code reverted to the run-4 state.
+  Run 6 `20261017T043628Z`: planner gpt-5-nano (low effort; b01-b03 reused fallback plans from an
+  interrupted run) -> 78% strict / 80% judge, 2/2 premises, 0 must-not hits, $0.209. Citation
+  accuracy 97% after the scorer learned short month names ("02 Aug 2026"); the one real miss is a
+  verified b09 claim that calls the block reward the "supply cap"., 5 never retrieved, 2 not extracted (-> 31).
 - `metrics.py`: pure metric functions. `run_eval.py`: runner. `results/`: committed outputs.
 
 Rules:

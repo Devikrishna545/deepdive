@@ -28,12 +28,19 @@ STAGES = ["retrieved", "extracted", "drafted", "verified", "reported"]
 
 
 # ------------------------------------------------------------------ anchor matching
+_MONTHS = {m[:3]: m for m in ["january", "february", "march", "april", "may", "june", "july", "august",
+                               "september", "october", "november", "december"]}
+_MONTHS["sept"] = "september"
+_SHORT_MONTH = re.compile(r"\b(" + "|".join(_MONTHS) + r")\.?(?=\s+\d{4}\b)")  # "02 aug 2026" -> "02 august 2026"
+
+
 def norm(text: str) -> str:
     text = unicodedata.normalize("NFKC", text).lower()
     text = re.sub(r"[‐-―−]", "-", text)  # unicode dashes
     text = text.replace(" ", " ").replace(" ", " ")
     text = re.sub(r"(?<=\d) (?=\d{3}\b)", ",", text)  # "375 000" -> "375,000"
     text = re.sub(r"(?<=\d) ?(%|per ?cent\b|percent\b)", "%", text)  # "9 %", "9 per cent" -> "9%"
+    text = _SHORT_MONTH.sub(lambda m: _MONTHS[m.group(1)], text)
     text = re.sub(r"(?<![\w.])0(\d)(?=\s+[a-z])", r"\1", text)  # "02 august 2026" -> "2 august 2026"
     return re.sub(r"\s+", " ", text)
 

@@ -18,7 +18,7 @@ from app.llm.billing import balance_status, cost_usd, load_prices
 
 # Rough token use per call, measured from the prompt sizes in app/agents (input, output).
 PER_CALL = {
-    "planner": (450, 300),
+    "planner": (450, 1200),  # reasoning model: ~300 visible + hidden thinking
     "researcher": (2200, 450),  # per sub-question
     "drafter": (700, 450),  # per sub-question
     "verifier": (550, 90),  # per claim that is not verbatim
@@ -55,17 +55,18 @@ def main() -> None:
         print("Could not load prices from Mesh (check MESH_API_KEY / network).")
         return
     roles = {
-        "planner": s.model_planner, "researcher": s.model_researcher, "drafter": s.model_drafter,
+        "planner": s.model_planner, "planner fallback": s.model_planner_fallback,
+        "researcher": s.model_researcher, "drafter": s.model_drafter,
         "verifier": s.model_verifier, "synthesizer": s.model_synthesizer, "judge (eval)": s.model_judge,
         "embeddings": s.embedding_model,
     }
-    print(f"{'role':14} {'model':40} {'$/1M in':>9} {'$/1M out':>9}")
+    print(f"{'role':16} {'model':40} {'$/1M in':>9} {'$/1M out':>9}")
     for role, model in roles.items():
         if model in prices:
             p_in, p_out = prices[model]
-            print(f"{role:14} {model:40} {p_in:9.3f} {p_out:9.3f}")
+            print(f"{role:16} {model:40} {p_in:9.3f} {p_out:9.3f}")
         else:
-            print(f"{role:14} {model:40} {'NOT FOUND on your account':>19}")
+            print(f"{role:16} {model:40} {'NOT FOUND on your account':>19}")
 
     for label, n in (("quick (3 sub-questions)", 3), (f"standard ({s.max_subquestions} sub-questions)", s.max_subquestions)):
         e = estimate(n)
