@@ -90,10 +90,13 @@ class FakeMesh:
         raise AssertionError(f"unexpected schema {schema}")
 
     def embed(self, texts, model=None):
+        # hashed bag of words: texts sharing words get similar vectors (like a real embedding)
         out = []
         for t in texts:
-            h = hashlib.sha256(t.encode()).digest()
-            out.append([b / 255 for b in h[:16]])
+            vec = [0.0] * 64
+            for w in re.findall(r"[a-z0-9]+", t.lower()):
+                vec[hashlib.sha256(w.encode()).digest()[0] % 64] += 1.0
+            out.append(vec)
         return out
 
 

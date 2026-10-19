@@ -10,7 +10,10 @@ Flask-style layout on FastAPI. Start at `app/__init__.py::create_app()`.
 - `core/` is deterministic and unit-tested: keep it free of network and LLM calls
   (exception: `contradictions.py` receives the Mesh client as an argument).
 - `db/repository.py` is the only module that opens DB sessions for app code.
-- `templates/` + `static/`: plain HTML, Tailwind (CDN) and vanilla JS. Use `el()` from
+- `templates/` + `static/`: plain HTML, one hand-written stylesheet (`static/css/app.css`, pastel
+  tokens + dark mode, no CSS framework), Lucide icons from a local sprite (`static/icons/sprite.svg`,
+  `icon()` in JS, `icon` macro in `partials/icons.html`) and vanilla JS. Installable as an app
+  (`/manifest.webmanifest`, `/sw.js`; the service worker never caches `/api`). Use `el()` from
   `static/js/common.js` for DOM building; never `innerHTML` with API data (it contains web text).
   Keep the UI accessible: labels on inputs, visible focus, `aria-*` on tabs and dialogs.
 

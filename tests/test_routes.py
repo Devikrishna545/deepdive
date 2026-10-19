@@ -24,6 +24,11 @@ def test_pages_render():
     with client() as c:
         assert c.get("/").status_code == 200
         assert c.get("/runs/does-not-exist").status_code == 404
+        # installable app: manifest and service worker at the root scope; icon sprite is local
+        assert c.get("/manifest.webmanifest").json()["short_name"] == "DeepDive"
+        sw = c.get("/sw.js")
+        assert sw.status_code == 200 and '"/api"' in sw.text  # the worker must skip research data
+        assert c.get("/static/icons/sprite.svg").status_code == 200
 
 
 def test_validation_rejects_short_question():
@@ -42,6 +47,8 @@ def test_report_endpoints_after_offline_run(fake_world):
         assert report["sections"]
         claims = c.get(f"/api/runs/{run_id}/claims").json()
         assert any(cl["verdict"]["label"] == "UNSUPPORTED" for cl in claims["claims"])
+        tiers = {ch["source"]["tier"] for cl in claims["claims"] for ch in cl["chunks"] if ch["source"]}
+        assert tiers and tiers <= {"official", "academic", "news", "other"}  # badge in the evidence panel
         trail = c.get(f"/api/runs/{run_id}/trail").json()
         assert len(trail["events"]) > 5
         md = c.get(f"/api/runs/{run_id}/export?fmt=md")

@@ -10,6 +10,8 @@ from fastapi.responses import HTMLResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 
+from app.core.schemas import Source
+from app.core.scoring import source_label
 from app.db import repository as repo
 from app.export.exporters import to_html
 from app.llm.billing import InsufficientBalance
@@ -123,6 +125,13 @@ def get_report(run_id: str) -> dict:
     return json.loads(run.report_json)
 
 
+def _with_tier(source: dict | None) -> dict | None:
+    """Add the source tier (official / academic / news / other) the UI shows as a badge."""
+    if not source:
+        return None
+    return source | {"tier": source_label(Source.model_validate(source))}
+
+
 @router.get("/{run_id}/claims")
 def get_claims(run_id: str) -> dict:
     """Every claim with its verdict, cited chunks and sources: the evidence behind the report."""
@@ -134,7 +143,7 @@ def get_claims(run_id: str) -> dict:
     chunks, sources = snap["chunks"], snap["sources"]
     claims = []
     for c in snap["claims"]:
-        cited = [chunks[cid] | {"source": sources.get(chunks[cid]["source_id"])} for cid in c["cited_chunk_ids"] if cid in chunks]
+        cited = [chunks[cid] | {"source": _with_tier(sources.get(chunks[cid]["source_id"]))} for cid in c["cited_chunk_ids"] if cid in chunks]
         claims.append(c | {"verdict": latest.get(c["id"]), "chunks": cited})
     return {
         "sub_questions": snap["sub_questions"],

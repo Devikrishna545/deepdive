@@ -28,12 +28,16 @@ Prompts: `prompt.md` (plan), `gap_prompt.md` (loop-back). Model: `MODEL_PLANNER`
   `premise` (+ `premise_queries`). Code then adds "Is it true that ...?" as the FIRST sub-question
   (`checks_premise=True`) and keeps the total within the limit. Leave `premise` empty otherwise:
   a needless check costs a sub-question slot.
-- Model: `MODEL_PLANNER` (default `openai/gpt-5-nano`, a reasoning model) with
-  `MODEL_PLANNER_FALLBACK` (`openai/gpt-oss-120b`) when the call errors or the plan stays invalid
+- Model: `MODEL_PLANNER` (default `openai/gpt-oss-120b`, a reasoning model) with
+  `MODEL_PLANNER_FALLBACK` (`openai/gpt-5-nano`) when the call errors or the plan stays invalid
   after one repair. Caps `PLAN_MAX_TOKENS=2500`, `GAP_MAX_TOKENS=1000`: hidden reasoning counts
   against them, and the planner asks for `PLANNER_REASONING_EFFORT=low` (at the default effort
   gpt-5-nano thought through all 2500 tokens and answered nothing). Reasoning models ignore temperature (the client drops it); the plan cache keeps
   reruns comparable. Changing the model changes the plan cache key.
+- Queries name the subject with its field ("transformer neural network", not "transformer"): a bare
+  ambiguous word pulls in the other meaning (a live run fetched power-grid transformer pages).
+  Sub-questions are plain questions; never copy prompt wording into them (gpt-5-nano wrote
+  "Figure: identify key figures and origin year." as a sub-question).
 - `quick` depth = max 3 sub-questions. Never exceed `MAX_SUBQUESTIONS` (cost and latency).
 - Gap queries must differ from queries already tried (code also filters duplicates). If no new
   query is produced, the node stops looping on that sub-question; do not force a retry.

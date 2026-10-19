@@ -1,47 +1,46 @@
+{% from "partials/icons.html" import icon with context %}
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{% block title %}DeepDive{% endblock %}</title>
+  <meta name="description" content="Research reports where every sentence is checked against its source.">
+  <meta name="theme-color" content="#F6F5FB" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#17172A" media="(prefers-color-scheme: dark)">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="{{ url_for('static', path='icons/app-icon.svg') }}" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="{{ url_for('static', path='icons/app-icon-180.png') }}">
+  <script>
+    // Apply the saved theme before first paint (no flash). Storage can be blocked: then follow the system.
+    try { const t = localStorage.getItem("theme"); if (t === "dark" || t === "light") document.documentElement.dataset.theme = t; } catch (_) {}
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap" rel="stylesheet">
-  <!-- Tailwind Play CDN: fine for a hackathon. For production, build Tailwind with the CLI. -->
-  <script src="https://cdn.tailwindcss.com/3.4.16"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            paper: "#F5F7FA", ink: "#14213D", slate: "#5B6B82", rule: "#D9DFE7",
-            primary: "#2F5BEA", verified: "#1F7A4D", partial: "#B7791F", rejected: "#B42318",
-          },
-          fontFamily: {
-            sans: ['"IBM Plex Sans"', "system-ui", "sans-serif"],
-            serif: ['"Source Serif 4"', "Georgia", "serif"],
-          },
-        },
-      },
-    };
-  </script>
   <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}">
 </head>
-<body class="bg-paper text-ink font-sans antialiased min-h-screen">
-  <header class="border-b border-rule bg-white">
-    <div class="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
-      <a href="/" class="font-semibold tracking-tight text-lg">DeepDive</a>
-      <nav class="flex gap-5 text-sm text-slate">
-        <a href="/" class="hover:text-ink">New research</a>
-        {% if settings().dev_mode %}<a href="/dev/usage" class="hover:text-ink">Token usage (dev)</a>{% endif %}
-        <a href="/docs" class="hover:text-ink">API</a>
+<body>
+  <header class="appbar">
+    <div class="appbar-inner">
+      <a href="/" class="brand" aria-label="DeepDive home">
+        <span class="brand-mark">{{ icon("search-check") }}</span>
+        DeepDive
+      </a>
+      <nav aria-label="Main">
+        <a href="/" class="navlink">{{ icon("plus") }}<span class="label">New research</span></a>
+        {% if settings().dev_mode %}<a href="/dev/usage" class="navlink">{{ icon("coins") }}<span class="label">Token usage (dev)</span></a>{% endif %}
+        <button type="button" class="iconbtn" id="theme-toggle" aria-label="Switch between light and dark theme">
+          <span class="theme-light-only">{{ icon("moon") }}</span><span class="theme-dark-only">{{ icon("sun") }}</span>
+        </button>
       </nav>
     </div>
   </header>
   <div id="balance-banner" role="status" class="hidden"></div>
-  <main class="max-w-6xl mx-auto px-4 py-8">
+  <main class="page">
     {% block content %}{% endblock %}
   </main>
+  <script>window.ICON_SPRITE = "{{ url_for('static', path='icons/sprite.svg') }}";</script>
   <script src="{{ url_for('static', path='js/common.js') }}"></script>
   {% block scripts %}{% endblock %}
 </body>

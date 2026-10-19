@@ -37,6 +37,14 @@ The coordinator is a LangGraph `StateGraph`: parallel research with `Send`, a co
 **coverage gate** that loops back to research when a sub-question has fewer than 2 verified
 claims from 2 independent domains (bounded by `MAX_LOOPS`), and deterministic code for routing and citation checks.
 
+### Finding the right evidence
+
+**Hybrid ranking.** Search results are first checked for meaning (Mesh embeddings), so a page that only
+shares a word with the question is skipped before it is fetched: an AI question about "transformers"
+no longer pulls in power-grid transformers. Passages are then ranked by keywords and meaning together:
+keywords keep exact names, figures and law titles strong, meaning keeps the topic right. The audit
+trail lists every skipped result. If embeddings are unavailable, ranking falls back to keywords.
+
 ### What makes the citations trustworthy
 
 1. **Isolated verifier on a different model family** from the drafter, so the system is not grading itself.
@@ -51,8 +59,8 @@ claims from 2 independent domains (bounded by `MAX_LOOPS`), and deterministic co
 
 - Balance read from Mesh (`GET /v1/balance`) before every run: a banner below **$5**, new runs refused below **$1**.
 - Every call is priced with live Mesh prices; cost is shown per step and per run, and a run stops at `RUN_BUDGET_USD`.
-- Cheap models for extraction, drafting and writing; a cheap reasoning model for planning (`gpt-5-nano`,
-  falling back to `gpt-oss-120b`), since the plan decides every search; the stronger model only for the
+- Cheap models for extraction, drafting and writing; a cheap reasoning model for planning (`gpt-oss-120b`,
+  falling back to `gpt-5-nano`), since the plan decides every search; the stronger model only for the
   verifier, where accuracy is decided.
 - Short prompts, compact output formats, `max_tokens` on every call, and a free code path that accepts claims copied word for word from a whole source sentence.
 - `python -m scripts.mesh_account` (free) shows your balance, the price of each configured model and the estimated cost per run.
@@ -74,7 +82,8 @@ python -m scripts.check_search                           # free: checks web sear
 python run.py                                            # http://127.0.0.1:8000
 ```
 
-- Web UI: ask a question, watch the pipeline, read the report, click any citation mark to see
+- Web UI (works on phone, tablet and desktop, light and dark, installable as an app): ask a question,
+  watch the pipeline, read the report, click any citation mark to see
   the exact passage, open the **Claims** tab to see what was removed, and the **Audit trail** tab.
 - Terminal: `python -m scripts.cli "your question"`
 - API docs: http://127.0.0.1:8000/docs

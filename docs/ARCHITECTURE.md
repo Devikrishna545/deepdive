@@ -9,7 +9,7 @@ one module, `app/llm/mesh_client.py`, to Mesh API.
 ```mermaid
 flowchart TB
     subgraph Browser
-        UI[HTML + Tailwind + vanilla JS<br/>index, run page, source dialog]
+        UI[HTML + CSS + vanilla JS, installable PWA<br/>home, run page, evidence panel]
     end
     subgraph FastAPI["FastAPI app (create_app)"]
         PG[routes/pages.py<br/>Jinja2 pages]

@@ -46,7 +46,7 @@ def test_planner_uses_reasoning_model_with_fallback_and_room_to_think(monkeypatc
     monkeypatch.delenv("MODEL_PLANNER_FALLBACK", raising=False)
     get_settings.cache_clear()
     s = get_settings()
-    assert s.model_planner == "openai/gpt-5-nano" and s.model_planner_fallback == "openai/gpt-oss-120b"
+    assert s.model_planner == "openai/gpt-oss-120b" and s.model_planner_fallback == "openai/gpt-5-nano"
     calls = []
 
     class Mesh:

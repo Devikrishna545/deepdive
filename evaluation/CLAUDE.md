@@ -20,7 +20,10 @@
   Run 6 `20261017T043628Z`: planner gpt-5-nano (low effort; b01-b03 reused fallback plans from an
   interrupted run) -> 78% strict / 80% judge, 2/2 premises, 0 must-not hits, $0.209. Citation
   accuracy 97% after the scorer learned short month names ("02 Aug 2026"); the one real miss is a
-  verified b09 claim that calls the block reward the "supply cap"., 5 never retrieved, 2 not extracted (-> 31).
+  verified b09 claim that calls the block reward the "supply cap".
+  Run 7 `20261018T083432Z`: all 10 plans made fresh by gpt-5-nano -> 50% strict / 51% judge. Nothing
+  else changed: nano plans were weak (a premise check on "data centers use electricity", the word
+  "TODAY" inside queries). Next: planner gpt-oss-120b + hybrid ranking (design decisions 34-35).
 - `metrics.py`: pure metric functions. `run_eval.py`: runner. `results/`: committed outputs.
 
 Rules:

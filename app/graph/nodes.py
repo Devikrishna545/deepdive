@@ -74,6 +74,7 @@ def research(task: ResearchTask) -> dict:
         "queries": result.queries,
         "urls_fetched": result.urls_fetched,
         "urls_failed": result.urls_failed,
+        "urls_skipped_off_topic": result.urls_skipped,
         "chunks": len(result.chunks),
         "findings": len(result.findings),
     }
@@ -83,8 +84,9 @@ def research(task: ResearchTask) -> dict:
         "findings": result.findings,
         "research_log": [log_entry],
         "_trail": {
-            "summary": f"{sq.text[:60]}: {len(result.urls_fetched)} pages, "
-            f"{len(result.chunks)} chunks, {len(result.findings)} findings",
+            "summary": f"{sq.text[:60]}: {len(result.urls_fetched)} pages"
+            + (f" ({len(result.urls_skipped)} off-topic results skipped)" if result.urls_skipped else "")
+            + f", {len(result.chunks)} chunks, {len(result.findings)} findings",
             "payload": log_entry | {"findings_text": [f.text for f in result.findings]},
         },
     }

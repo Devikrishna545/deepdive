@@ -29,7 +29,13 @@ Tools: `app/tools/search.py`, `fetch.py`, `chunker.py`, `documents.py`.
 - Respect limits (they are the main input-token lever): `MAX_PAGES_PER_SUBQUESTION` (4),
   `CHUNKS_PER_PAGE` (3), `CHUNKS_PER_SUBQUESTION` (10), 700-char chunks cleaned of Markdown links/footnotes, `MAX_FINDINGS` (10), `FETCH_TIMEOUT_S`,
   `MAX_CONCURRENCY`. Results are cached in SQLite so eval reruns are cheap and comparable.
-- Ranking uses `app/core/scoring.py` (source quality). Change trust policy there, not here.
+- Ranking is hybrid (`app/tools/semantic.py`): search results whose title + snippet are far from the
+  question in meaning (below 0.7 x the best result's embedding similarity; at least 2 kept) are
+  skipped before fetching and logged as `urls_skipped_off_topic`; the rest are ordered by
+  0.7 x meaning + 0.3 x source quality. Passages: keyword pre-filter (`CANDIDATES_PER_PAGE`=8 per
+  page), then 0.5 x keywords + 0.5 x meaning across pages, max `CHUNKS_PER_PAGE` per source.
+  Embedding failure -> keywords only (never fails a run). Source quality lives in
+  `app/core/scoring.py`; change trust policy there, not here.
 
 ## Failure modes to watch
 - Paywalled / JS-heavy pages return no text: prefer Tavily content, keep several hits per query.

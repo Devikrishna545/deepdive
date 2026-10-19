@@ -1,0 +1,4 @@
+{# Lucide icons from the local sprite (static/icons/sprite.svg). Decorative unless a label is given. #}
+{% macro icon(name, cls="", label=None) -%}
+<svg class="icon {{ cls }}" {% if label %}role="img" aria-label="{{ label }}"{% else %}aria-hidden="true"{% endif %} focusable="false"><use href="{{ url_for('static', path='icons/sprite.svg') }}#i-{{ name }}"></use></svg>
+{%- endmacro %}

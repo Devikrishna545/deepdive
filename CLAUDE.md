@@ -55,7 +55,7 @@ makes the report more faithful to its sources, even if it gets shorter.
    agent only what it needs (the drafter gets findings, not chunks; the verifier gets one claim
    and its cited chunks). Do not resend context "just in case".
 10. **Model choice:** cheap models (`gpt-4o-mini` class) for researcher, drafter, synthesizer; a
-    cheap reasoning model for the planner (`gpt-5-nano`, fallback `gpt-oss-120b`), because plans
+    cheap reasoning model for the planner (`gpt-oss-120b`, fallback `gpt-5-nano`), because plans
     decide every search; the stronger model only for the verifier, where claim accuracy is decided.
     Before changing a model, check its live price with `python -m scripts.mesh_account` (free).
 11. **Respect the guards:** `RUN_BUDGET_USD` per run, `MIN_BALANCE_STOP_USD` floor (runs refused),
@@ -70,13 +70,13 @@ makes the report more faithful to its sources, even if it gets shorter.
 app/__init__.py      create_app() factory (like Flask)        run.py  dev server entry
 app/config.py        all settings (env / .env)
 app/routes/          routers = blueprints: pages, health, api_runs, api_files
-app/templates/       Jinja2 pages (Tailwind via CDN)          app/static/  css + vanilla JS
+app/templates/       Jinja2 pages                             app/static/  css, icons, vanilla JS, PWA
 app/graph/           LangGraph coordinator: state, nodes, builder, tracing (audit trail)
 app/agents/<name>/   one folder per agent: agent.py + prompt.md + SKILL.md
 app/core/            deterministic logic: schemas, guards, coverage, citation check, scoring, contradictions
 app/llm/             mesh_client.py (ONLY model gateway), usage.py (tokens + USD per node/run),
                      billing.py (Mesh balance + live prices), schema_hint.py (compact output formats)
-app/tools/           search, fetch, chunker, documents (not LLM calls)
+app/tools/           search, fetch, chunker, semantic (hybrid ranking via Mesh embeddings), documents
 app/db/              SQLModel tables + repository (all DB access)
 app/services/        run_service: API <-> graph bridge, background runs
 evaluation/          test sets, metrics, runner, results/ (committed)

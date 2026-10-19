@@ -1,74 +1,78 @@
 {% extends "base.html" %}
+{% from "partials/icons.html" import icon with context %}
 {% block title %}DeepDive — {{ run.question[:60] }}{% endblock %}
 {% block content %}
 <div id="run-root" data-run-id="{{ run.id }}" data-status="{{ run.status }}" data-dev="{{ 'true' if settings().dev_mode else 'false' }}">
-  <h1 class="text-2xl sm:text-3xl font-semibold leading-snug max-w-4xl">{{ run.question }}</h1>
-  <p class="mt-2 text-sm text-slate">
-    <span id="run-status">{{ run.status }}</span><span id="run-tokens"></span>
-  </p>
+  <header class="run-head">
+    <a href="/" class="back">{{ icon("chevron-left") }} All research</a>
+    <h1>{{ run.question }}</h1>
+    <div class="run-meta" id="run-meta">
+      <span class="pill pill-lavender" id="run-status">{{ icon("loader-circle", "icon-sm spin") }} Starting</span>
+    </div>
+  </header>
 
-  <div class="mt-8 grid lg:grid-cols-[260px_1fr] gap-8">
-    <!-- Pipeline progress: the steps really are a sequence -->
-    <aside aria-label="Pipeline progress">
-      <h2 class="text-sm font-semibold">Pipeline</h2>
-      <ol id="pipeline" class="mt-3 space-y-2 text-sm">
-        <li data-node="plan">Plan sub-questions</li>
-        <li data-node="research">Research sources</li>
-        <li data-node="draft">Draft claims</li>
-        <li data-node="verify">Verify each claim</li>
-        <li data-node="gap_plan">Research thin topics again</li>
-        <li data-node="cross_check">Check for disagreements</li>
-        <li data-node="synthesize">Write report</li>
-        <li data-node="cite_check">Remove uncited sentences</li>
-      </ol>
-      <div id="stats" class="mt-6 text-sm space-y-1 hidden"></div>
-    </aside>
+  <section class="progress" id="progress" aria-label="Research progress">
+    <ol class="steps" id="pipeline">
+      <li class="step" data-step="plan"><span class="dot">{{ icon("route") }}</span><span class="name">Plan</span></li>
+      <li class="step" data-step="research"><span class="dot">{{ icon("search") }}</span><span class="name">Research</span></li>
+      <li class="step" data-step="draft"><span class="dot">{{ icon("pen-line") }}</span><span class="name">Draft</span></li>
+      <li class="step" data-step="verify"><span class="dot">{{ icon("shield-check") }}</span><span class="name">Verify</span></li>
+      <li class="step" data-step="cross"><span class="dot">{{ icon("scale") }}</span><span class="name">Compare</span></li>
+      <li class="step" data-step="write"><span class="dot">{{ icon("book-open-text") }}</span><span class="name">Write</span></li>
+    </ol>
+    <p class="live-note" id="live-note" aria-live="polite">{{ icon("loader-circle", "icon-sm spin") }}<span>Waiting for the first step…</span></p>
+  </section>
 
-    <section>
-      <div role="tablist" class="flex flex-wrap gap-1 border-b border-rule">
-        <button role="tab" aria-selected="true" data-tab="report" class="tab">Report</button>
-        <button role="tab" aria-selected="false" data-tab="claims" class="tab">Claims</button>
-        <button role="tab" aria-selected="false" data-tab="trail" class="tab">Audit trail</button>
-        {% if settings().dev_mode %}<button role="tab" aria-selected="false" data-tab="tokens" class="tab">Tokens (dev)</button>{% endif %}
-        <div class="ml-auto flex items-center gap-3 text-sm">
-          <a id="export-md" class="text-primary hover:underline hidden" href="/api/runs/{{ run.id }}/export?fmt=md">Download Markdown</a>
-          <a id="export-html" class="text-primary hover:underline hidden" target="_blank" rel="noopener" href="/api/runs/{{ run.id }}/export?fmt=html">Printable page</a>
+  <div class="run-body">
+    <section aria-label="Results">
+      <div class="tabs-row">
+        <div class="segmented" role="tablist" aria-label="Views">
+          <button role="tab" aria-selected="true" aria-controls="panel-report" data-tab="report">{{ icon("file-text", "icon-sm") }} Report</button>
+          <button role="tab" aria-selected="false" aria-controls="panel-claims" data-tab="claims">{{ icon("list-checks", "icon-sm") }} Claims <span class="count" id="claims-count"></span></button>
+          <button role="tab" aria-selected="false" aria-controls="panel-trail" data-tab="trail">{{ icon("scroll-text", "icon-sm") }} Audit trail</button>
+          {% if settings().dev_mode %}<button role="tab" aria-selected="false" aria-controls="panel-tokens" data-tab="tokens">{{ icon("coins", "icon-sm") }} Tokens (dev)</button>{% endif %}
+        </div>
+        <div class="actions">
+          <a id="export-md" class="btn hidden" href="/api/runs/{{ run.id }}/export?fmt=md" aria-label="Download Markdown">{{ icon("download") }}<span class="label">Markdown</span></a>
+          <a id="export-html" class="btn hidden" target="_blank" rel="noopener" href="/api/runs/{{ run.id }}/export?fmt=html" aria-label="Open printable page">{{ icon("printer") }}<span class="label">Print</span></a>
         </div>
       </div>
 
-      <div id="panel-report" class="tab-panel pt-6">
-        <p id="report-waiting" class="text-slate">The report appears here when the run finishes. Progress is on the left.</p>
-        <article id="report" class="report font-serif hidden"></article>
+      <div id="panel-report" class="tab-panel" role="tabpanel">
+        <div id="report-waiting" class="skeleton" aria-label="The report appears here when the run finishes"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+        <article id="report" class="report hidden"></article>
       </div>
-      <div id="panel-claims" class="tab-panel pt-6 hidden">
-        <div class="flex gap-2 text-sm" role="group" aria-label="Filter claims">
-          <button class="chip" data-filter="all" aria-pressed="true">All</button>
-          <button class="chip" data-filter="kept" aria-pressed="false">Kept</button>
-          <button class="chip" data-filter="rejected" aria-pressed="false">Removed</button>
+      <div id="panel-claims" class="tab-panel hidden" role="tabpanel">
+        <div class="segmented" role="group" aria-label="Filter claims">
+          <button data-filter="all" aria-pressed="true">All</button>
+          <button data-filter="kept" aria-pressed="false">{{ icon("circle-check", "icon-sm") }} Kept</button>
+          <button data-filter="rejected" aria-pressed="false">{{ icon("circle-x", "icon-sm") }} Removed</button>
         </div>
-        <div id="claims" class="mt-4"></div>
+        <div id="claims"></div>
       </div>
-      <div id="panel-trail" class="tab-panel pt-6 hidden">
-        <ol id="trail" class="space-y-2 text-sm"></ol>
+      <div id="panel-trail" class="tab-panel hidden" role="tabpanel">
+        <ol id="trail" class="trail"></ol>
       </div>
       {% if settings().dev_mode %}
-      <div id="panel-tokens" class="tab-panel pt-6 hidden">
+      <div id="panel-tokens" class="tab-panel hidden dev" role="tabpanel">
         <p class="text-sm text-slate">Developer view: Mesh tokens each agent used in this run. Updates live while the run is going.</p>
         <div id="tokens" class="mt-4"></div>
       </div>
       {% endif %}
     </section>
+
+    <aside class="evidence" id="evidence" aria-label="Evidence" aria-live="polite">
+      <div class="evidence-empty">
+        <span class="bubble">{{ icon("quote") }}</span>
+        <p>Select a citation number in the report to see the passage it comes from, with the quoted words highlighted.</p>
+      </div>
+    </aside>
   </div>
 
-  <!-- Source panel: opens when a citation mark is clicked -->
-  <dialog id="source-dialog" class="rounded-lg p-0 w-[min(640px,92vw)] backdrop:bg-ink/40">
-    <div class="p-5">
-      <div class="flex items-start gap-3">
-        <h3 id="dlg-title" class="font-semibold flex-1">Source</h3>
-        <button id="dlg-close" class="text-slate hover:text-ink" aria-label="Close">Close</button>
-      </div>
-      <div id="dlg-body" class="mt-3 text-sm space-y-3"></div>
-    </div>
+  <dialog id="evidence-sheet" class="sheet" aria-label="Evidence">
+    <div class="sheet-grip" aria-hidden="true"></div>
+    <div class="sheet-head"><strong>Evidence</strong><button class="iconbtn" id="sheet-close" aria-label="Close">{{ icon("x") }}</button></div>
+    <div class="sheet-body" id="sheet-body"></div>
   </dialog>
 </div>
 {% endblock %}

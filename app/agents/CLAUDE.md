@@ -10,7 +10,7 @@ Each agent has its own folder with three files. **Read the agent's `SKILL.md` be
 
 | Agent | Job | Model setting | Sees |
 | --- | --- | --- | --- |
-| planner | question -> sub-questions + queries; thin topic -> gap queries | MODEL_PLANNER (reasoning; MODEL_PLANNER_FALLBACK on failure) | question, rejection reasons |
+| planner | question -> sub-questions + queries; thin topic -> gap queries | MODEL_PLANNER (reasoning, gpt-oss-120b; MODEL_PLANNER_FALLBACK on failure) | question, rejection reasons |
 | researcher | sub-question -> sources, chunks, findings (chunk-cited) | MODEL_RESEARCHER | chunks it fetched |
 | drafter | findings -> atomic cited claims | MODEL_DRAFTER | findings only (chunk ids, no chunk text) |
 | verifier | ONE claim vs ITS cited chunks -> verdict | MODEL_VERIFIER (different family) | one claim + its chunks only |
