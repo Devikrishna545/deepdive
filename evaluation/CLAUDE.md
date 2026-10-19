@@ -24,6 +24,10 @@
   Run 7 `20261018T083432Z`: all 10 plans made fresh by gpt-5-nano -> 50% strict / 51% judge. Nothing
   else changed: nano plans were weak (a premise check on "data centers use electricity", the word
   "TODAY" inside queries). Next: planner gpt-oss-120b + hybrid ranking (design decisions 34-35).
+- `run_eval.py --ablation` runs the normal and the verification-off set in one call (one README
+  block). After an interrupted run, add `--reuse-hours N` to re-judge finished runs (ids `eval_*`,
+  ablation `evalab_*`) instead of paying for them again. A judge reply that stays invalid is counted
+  as `judge_errors` and excluded from groundedness (shown under the README table), never dropped.
 - `metrics.py`: pure metric functions. `run_eval.py`: runner. `results/`: committed outputs.
 
 Rules:

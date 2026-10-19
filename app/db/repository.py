@@ -38,6 +38,15 @@ def list_runs(limit: int = 20) -> list[Run]:
         return list(s.exec(select(Run).order_by(col(Run.created_at).desc()).limit(limit)))
 
 
+def latest_done_run(question: str, depth: str, id_prefix: str, since) -> Run | None:
+    """Newest finished run for this exact question/depth whose id starts with `id_prefix`, created after `since`."""
+    with session_scope() as s:
+        stmt = (select(Run).where(Run.question == question, Run.depth == depth, Run.status == "done",
+                                  col(Run.id).startswith(id_prefix, autoescape=True), Run.created_at >= since)
+                .order_by(col(Run.created_at).desc()).limit(1))
+        return s.exec(stmt).first()
+
+
 def update_run(run_id: str, **fields: Any) -> None:
     with session_scope() as s:
         run = s.get(Run, run_id)

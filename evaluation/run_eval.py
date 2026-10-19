@@ -5,6 +5,7 @@ Usage (needs MESH_API_KEY; every command spends credits, so start small):
     python -m evaluation.run_eval --set questions --limit 3 --max-usd 0.5
     python -m evaluation.run_eval --set questions --limit 3 --ablation   # normal run AND verification off
     python -m evaluation.run_eval --set all --limit 5 --depth quick --max-usd 1.0
+    python -m evaluation.run_eval --set all --limit 10 --ablation --reuse-hours 6   # resume: reuse finished runs
 
 The question set stops early when --max-usd is spent or the Mesh balance falls below
 MIN_BALANCE_STOP_USD; the stop reason is recorded in the results file.
@@ -20,7 +21,7 @@ import json
 import os
 import re
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -67,49 +68,68 @@ def eval_verifier() -> dict:
 
 
 # ------------------------------------------------------------------ full runs on test questions
-# The judge (gemini-2.5-flash) is a thinking model: hidden reasoning counts against max_tokens, and a
-# 100-250 cap made it stop before answering (same failure as the benchmark judge). Low effort keeps cost down.
-JUDGE_MAX_TOKENS = 1500
+# The judge (gemini-2.5-flash) is a thinking model: hidden reasoning counts against max_tokens. A 100-250
+# cap made it stop before answering, and 1500 still cut off a verdict mid-JSON on a live run. Only tokens
+# actually used are billed, so a generous cap costs nothing extra. Low effort keeps the thinking short.
+JUDGE_MAX_TOKENS = 4000
 
 
 def _judge_groundedness(report: dict, snapshot: dict, judge_model: str) -> dict:
     from app.agents.base import chunk_block, load_prompt
     from app.core.guards import apply_quote_guard
     from app.core.schemas import Verdict, VerdictLabel, VerdictOut
-    from app.llm.mesh_client import get_mesh
+    from app.llm.mesh_client import MeshError, get_mesh
 
     claims = {c["id"]: c for c in snapshot["claims"]}
     chunks = snapshot["chunks"]
     labels = []
+    errors = 0
     for sentence in report_sentences(report):
         chunk_ids = {cid for claim_id in sentence["claim_ids"] for cid in claims.get(claim_id, {}).get("cited_chunk_ids", [])}
         texts = [chunks[c]["text"] for c in chunk_ids if c in chunks]
         if not texts:
             labels.append("UNSUPPORTED")
             continue
-        out = get_mesh().chat_json(
-            model=judge_model,
-            system=load_prompt("verifier"),
-            user=f"CLAIM: {sentence['text']}\n\nSOURCE:\n" + "\n\n".join(chunk_block(c, chunks[c]["text"]) for c in chunk_ids if c in chunks),
-            schema=VerdictOut,
-            max_tokens=JUDGE_MAX_TOKENS,
-            reasoning_effort="low",
-        )
+        try:
+            out = get_mesh().chat_json(
+                model=judge_model,
+                system=load_prompt("verifier"),
+                user=f"CLAIM: {sentence['text']}\n\nSOURCE:\n" + "\n\n".join(chunk_block(c, chunks[c]["text"]) for c in chunk_ids if c in chunks),
+                schema=VerdictOut,
+                max_tokens=JUDGE_MAX_TOKENS,
+                reasoning_effort="low",
+            )
+        except MeshError as exc:  # a judge failure is counted and reported, never silently dropped
+            if "402" in str(exc):
+                raise
+            errors += 1
+            continue
         v = apply_quote_guard(Verdict(claim_id="eval", label=out.label, reason=out.reason, evidence_quote=out.evidence_quote), texts)
         labels.append(v.label.value)
     n = len(labels)
     return {
-        "sentences": n,
+        "sentences": n + errors,
+        "judge_errors": errors,  # sentences the judge could not grade (excluded from the rates below)
         "groundedness": safe_div(labels.count(VerdictLabel.SUPPORTED.value), n),
         "partial_rate": safe_div(labels.count(VerdictLabel.PARTIAL.value), n),
     }
 
 
 def _judge_coverage(question: dict, markdown: str, judge_model: str) -> float | None:
-    from app.llm.mesh_client import get_mesh
+    from app.llm.mesh_client import MeshError, get_mesh
 
     points = question["must_cover"]
-    out = get_mesh().chat_json(
+    try:
+        out = _coverage_call(points, markdown, judge_model, get_mesh())
+    except MeshError as exc:
+        if "402" in str(exc):
+            raise
+        return None  # reported as missing coverage for this question, not as zero
+    return safe_div(sum(out.covered[: len(points)]), len(points))
+
+
+def _coverage_call(points: list[str], markdown: str, judge_model: str, mesh):
+    return mesh.chat_json(
         model=judge_model,
         system="For each KEY POINT, answer true if the REPORT clearly covers it, else false. "
         "Return `covered` as a list of booleans in the same order as the key points.",
@@ -118,11 +138,14 @@ def _judge_coverage(question: dict, markdown: str, judge_model: str) -> float | 
         max_tokens=JUDGE_MAX_TOKENS,
         reasoning_effort="low",
     )
-    return safe_div(sum(out.covered[: len(points)]), len(points))
 
 
-def eval_questions(limit: int | None, ablation: bool, depth: str, max_usd: float) -> dict:
-    """Run test questions until `limit`, the Mesh balance floor, or `max_usd` spent, whichever comes first."""
+def eval_questions(limit: int | None, ablation: bool, depth: str, max_usd: float, reuse_hours: float = 0.0) -> dict:
+    """Run test questions until `limit`, the Mesh balance floor, or `max_usd` spent, whichever comes first.
+
+    reuse_hours > 0: a question that already has a finished eval run of the same kind (same depth,
+    verification on/off by id prefix) from the last `reuse_hours` is judged again without paying for
+    a new research run. Used to resume after an interrupted evaluation."""
     os.environ["VERIFY_ENABLED"] = "false" if ablation else "true"
     from app.config import get_settings
 
@@ -136,6 +159,8 @@ def eval_questions(limit: int | None, ablation: bool, depth: str, max_usd: float
 
     init_db()
     judge = get_settings().model_judge
+    prefix = "evalab" if ablation else "eval"  # ablation runs never get mixed up with normal ones
+    since = datetime.now(timezone.utc) - timedelta(hours=reuse_hours)
     rows, spent, stopped = [], 0.0, None
     for q in _load("questions.jsonl")[:limit]:
         if spent >= max_usd:
@@ -146,16 +171,20 @@ def eval_questions(limit: int | None, ablation: bool, depth: str, max_usd: float
         except InsufficientBalance as exc:
             stopped = str(exc)
             break
-        run_id = new_id("eval")
-        repo.create_run(run_id, q["question"], depth, [])
         started = time.perf_counter()
-        try:
-            execute_run(run_id, q["question"], depth, [])
-        except Exception as exc:  # record failures honestly instead of skipping them
-            failed = repo.get_run(run_id)
-            spent += failed.cost_usd if failed else 0.0
-            rows.append({"id": q["id"], "category": q["category"], "error": str(exc)})
-            continue
+        previous = repo.latest_done_run(q["question"], depth, f"{prefix}_", since) if reuse_hours > 0 else None
+        if previous:
+            run_id, reused = previous.id, True
+        else:
+            run_id, reused = new_id(prefix), False
+            repo.create_run(run_id, q["question"], depth, [])
+            try:
+                execute_run(run_id, q["question"], depth, [])
+            except Exception as exc:  # record failures honestly instead of skipping them
+                failed = repo.get_run(run_id)
+                spent += failed.cost_usd if failed else 0.0
+                rows.append({"id": q["id"], "category": q["category"], "error": str(exc)})
+                continue
         run = repo.get_run(run_id)
         report, snapshot = json.loads(run.report_json), json.loads(run.snapshot_json)
         collector, token = start_collecting()  # judge calls are priced too
@@ -164,14 +193,15 @@ def eval_questions(limit: int | None, ablation: bool, depth: str, max_usd: float
                       **_judge_groundedness(report, snapshot, judge)}
         finally:
             stop_collecting(token)
-        run_cost = run.cost_usd + collector.cost_usd
-        spent += run_cost
-        print(f"  {q['id']}: ${run_cost:.4f} (total ${spent:.4f})")
+        run_cost = run.cost_usd + collector.cost_usd  # the run's own cost, even when reused
+        spent += collector.cost_usd if reused else run_cost  # only what this command actually paid
+        print(f"  {q['id']}: ${run_cost:.4f}{' (reused run)' if reused else ''} (spent now ${spent:.4f})")
         rows.append(
             {
                 "id": q["id"],
                 "category": q["category"],
                 "run_id": run_id,
+                "reused_run": reused,
                 "seconds": round(time.perf_counter() - started, 1),
                 "tokens": run.tokens,
                 "cost_usd": round(run_cost, 5),
@@ -190,6 +220,7 @@ def eval_questions(limit: int | None, ablation: bool, depth: str, max_usd: float
 
     summary = {k: mean(k) for k in ("groundedness", "partial_rate", "uncited_rate", "coverage", "claim_pass_rate",
                                      "loop_back_rate", "seconds", "tokens", "cost_usd")}
+    summary["judge_errors"] = sum(r.get("judge_errors", 0) for r in ok)
     return {"ablation": ablation, "judge_model": judge, "depth": depth, "runs": len(rows),
             "failed": len(rows) - len(ok), "total_cost_usd": round(spent, 4), "stopped_early": stopped,
             "summary": summary, "rows": rows}
@@ -211,6 +242,8 @@ def _readme_table(results: dict) -> str:
                       "| --- | --- | --- | --- | --- | --- | --- | --- |",
                       f"| {s['groundedness']} | {s['uncited_rate']} | {s['coverage']} | {s['claim_pass_rate']} | "
                       f"{s['loop_back_rate']} | {s['seconds']} | {s['tokens']} | {s['cost_usd']} |", ""]
+            if s.get("judge_errors"):
+                lines += [f"_{s['judge_errors']} sentence(s) could not be graded by the judge and are excluded from groundedness._", ""]
     return "\n".join(lines)
 
 
@@ -234,6 +267,8 @@ def main() -> None:
     parser.add_argument("--limit", type=int, default=5, help="only the first N questions (default 5 to save credits)")
     parser.add_argument("--depth", choices=["quick", "standard"], default="quick")
     parser.add_argument("--max-usd", type=float, default=1.0, help="stop the question set after this much spend")
+    parser.add_argument("--reuse-hours", type=float, default=0.0,
+                        help="resume: reuse finished eval runs from the last N hours instead of paying for them again")
     parser.add_argument("--ablation", action="store_true",
                         help="questions: also run the same questions with verification off (both go in one README block)")
     args = parser.parse_args()
@@ -247,7 +282,7 @@ def main() -> None:
         # block, so two separate calls would leave only the last one's table.
         for ablation in ([False, True] if args.ablation else [False]):
             key = "ablation" if ablation else "questions"
-            results[key] = eval_questions(args.limit, ablation, args.depth, args.max_usd)
+            results[key] = eval_questions(args.limit, ablation, args.depth, args.max_usd, args.reuse_hours)
             print(f"{key}:", results[key]["summary"])
     print("written to", write_results(results))
 

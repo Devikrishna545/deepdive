@@ -137,7 +137,26 @@ The question runner stops early at `--max-usd` or when the Mesh balance reaches 
 ### Results
 
 <!-- EVAL:START -->
-_Not run yet. Numbers will be written here by `python -m evaluation.run_eval`._
+_Last run: 20261019T183845Z. Raw numbers: `evaluation/results/eval_20261019T183845Z.json`._
+
+**Verifier on labelled pairs**
+
+| Pairs | Bad-citation recall | Bad-citation precision | Exact label accuracy |
+| --- | --- | --- | --- |
+| 16 | 0.8889 | 1.0 | 0.875 |
+
+**Full runs: With verification** (10 questions, judge `google/gemini-2.5-flash`)
+
+| Groundedness | Uncited sentences | Coverage | Claim pass rate | Loop-back rate | Avg seconds | Avg tokens | Avg cost (USD) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 0.823 | 0.0 | 0.675 | 0.962 | 0.0 | 93.24 | 39069.5 | 0.0375 |
+
+**Full runs: Ablation: verification off** (10 questions, judge `google/gemini-2.5-flash`)
+
+| Groundedness | Uncited sentences | Coverage | Claim pass rate | Loop-back rate | Avg seconds | Avg tokens | Avg cost (USD) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 0.7768 | 0.0 | 0.675 | 1.0 | 0.0 | 49.07 | 27257.5 | 0.0204 |
+
 <!-- EVAL:END -->
 
 ## Key design decisions
