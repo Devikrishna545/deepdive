@@ -5,19 +5,20 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
 
 from app.config import get_settings
 from app.core.utils import new_id
 from app.llm.billing import InsufficientBalance, require_balance
-from app.tools.documents import ALLOWED_SUFFIXES, ingest_document
+from app.routes.guards import require_access_code
+from app.tools.documents import ALLOWED_SUFFIXES, DocumentError, ingest_document
 
 router = APIRouter()
 
 MAX_BYTES = 20 * 1024 * 1024
 
 
-@router.post("", status_code=201)
+@router.post("", status_code=201, dependencies=[Depends(require_access_code)])
 def upload_file(file: UploadFile) -> dict:
     try:
         require_balance()  # embedding the document spends credits
@@ -35,5 +36,9 @@ def upload_file(file: UploadFile) -> dict:
     if dest.stat().st_size > MAX_BYTES:
         dest.unlink(missing_ok=True)
         raise HTTPException(status_code=413, detail="file larger than 20 MB")
-    doc = ingest_document(dest, name)
+    try:
+        doc = ingest_document(dest, name)
+    except DocumentError as exc:
+        dest.unlink(missing_ok=True)
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     return {"file_id": doc.id, "filename": doc.filename, "pages": doc.pages}

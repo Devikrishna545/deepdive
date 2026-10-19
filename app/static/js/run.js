@@ -3,7 +3,7 @@
 
 const root = document.getElementById("run-root");
 const runId = root.dataset.runId;
-const state = { run: null, report: null, claims: null, claimById: {}, refBySource: {}, tierBySource: {}, filter: "all", selected: null };
+const state = { run: null, report: null, claims: null, claimById: {}, refBySource: {}, tierBySource: {}, filter: "all", selected: null, unverified: false };
 
 // Pipeline nodes -> the six steps shown to the reader. A loop-back (gap_plan) is more research.
 const STEP_OF = { plan: "plan", gap_plan: "research", research: "research", draft: "draft", verify: "verify", cross_check: "cross", synthesize: "write", cite_check: "write" };
@@ -15,6 +15,11 @@ const VERDICT = {
   UNSUPPORTED: { text: "Not supported", pill: "pill-rose", icon: "circle-x" },
   CONTRADICTED: { text: "Contradicted", pill: "pill-rose", icon: "circle-x" },
 };
+// Runs with verification switched off (the evaluation's ablation) keep every claim unchecked. Their
+// stored verdicts say SUPPORTED with model "none"; they must never look verified.
+const NOT_VERIFIED = { text: "Not verified", pill: "", icon: "circle-alert" };
+const NOT_VERIFIED_NOTE = "Verification was turned off for this run (an evaluation comparison), so this claim was not checked against its source.";
+const isUnchecked = (v) => !!v && v.model === "none";
 const TIER = {
   official: { text: "Official", pill: "pill-sky", icon: "landmark" },
   academic: { text: "Academic", pill: "pill-lavender", icon: "graduation-cap" },
@@ -24,11 +29,27 @@ const TIER = {
 };
 
 // ------------------------------------------------------------------ tabs
-function showTab(name) {
-  document.querySelectorAll("[role=tab]").forEach((t) => t.setAttribute("aria-selected", String(t.dataset.tab === name)));
+const tabs = [...document.querySelectorAll("[role=tab]")];
+function showTab(name, focus = false) {
+  tabs.forEach((t) => {
+    const on = t.dataset.tab === name;
+    t.setAttribute("aria-selected", String(on));
+    t.tabIndex = on ? 0 : -1; // roving tabindex: one tab stop for the tab list, arrows move inside it
+    if (on && focus) t.focus();
+  });
   document.querySelectorAll(".tab-panel").forEach((p) => p.classList.toggle("hidden", p.id !== `panel-${name}`));
 }
-document.querySelectorAll("[role=tab]").forEach((tab) => tab.addEventListener("click", () => showTab(tab.dataset.tab)));
+tabs.forEach((tab) => {
+  tab.addEventListener("click", () => showTab(tab.dataset.tab));
+  tab.addEventListener("keydown", (e) => {
+    const i = tabs.indexOf(tab);
+    const next = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
+    if (next === undefined) return;
+    e.preventDefault();
+    showTab(tabs[(next + tabs.length) % tabs.length].dataset.tab, true);
+  });
+});
+showTab("report");
 
 // ------------------------------------------------------------------ status + progress
 const pipeline = document.getElementById("pipeline");
@@ -80,6 +101,9 @@ function listenForProgress() {
     source.close();
     const info = JSON.parse(e.data);
     pipeline.querySelectorAll(".step.active").forEach((x) => { x.classList.remove("active"); x.classList.add(info.status === "done" ? "done" : "failed"); });
+    if (info.status !== "done" && !pipeline.querySelector(".step.failed")) {
+      pipeline.querySelector(".step:not(.done)")?.classList.add("failed"); // the step the run stopped at
+    }
     document.getElementById("progress").classList.add("finished");
     refreshTokens();
     if (info.status === "done") loadResults();
@@ -91,10 +115,12 @@ function listenForProgress() {
 // ------------------------------------------------------------------ failure
 function friendlyError(error) {
   const e = String(error || "");
-  if (/no evidence|no search results|NoEvidence/i.test(e)) return "No usable sources were found for this question. Try naming the place, year or organisation you mean.";
+  if (/no evidence|no search results|no sources found|NoEvidence/i.test(e)) return "No usable sources were found for this question. Try naming the place, year or organisation you mean, or check that web search is set up.";
+  if (/connection error|connecterror|proxyerror|timed out|timeout|unreachable/i.test(e)) return "DeepDive could not reach the AI model service. Check the internet connection and the Mesh API key, then run it again.";
+  if (/did not return valid|invalid json/i.test(e)) return "The AI model returned an answer DeepDive could not read. Running it again usually works.";
   if (/balance|402|spend cap/i.test(e)) return "The model credit balance is too low to finish this run. Top up the Mesh balance, then run it again.";
   if (/budget/i.test(e)) return "The run reached its cost limit before finishing. Try the Quick setting or a narrower question.";
-  return e || "Something went wrong. The audit trail shows the last step that ran.";
+  return e ? `Something went wrong: ${e}` : "Something went wrong. The audit trail shows the last step that ran.";
 }
 
 async function showFailure(error) {
@@ -107,11 +133,13 @@ async function showFailure(error) {
       el("p", {}, friendlyError(error || run?.error)),
       run ? el("button", { class: "btn", type: "button", onclick: () => rerun(run) }, icon("repeat-2"), "Run again") : null));
   document.getElementById("report-waiting").replaceWith(card);
+  document.getElementById("evidence").classList.add("hidden"); // nothing to cite on a failed run
+  liveNote.replaceChildren();
 }
 
 async function rerun(run) {
   try {
-    const next = await api("/api/runs", { method: "POST", headers: { "Content-Type": "application/json" },
+    const next = await api("/api/runs", { method: "POST", headers: accessHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ question: run.question, depth: run.depth, file_ids: [] }) });
     window.location.href = `/runs/${next.run_id}`;
   } catch (err) { setLiveNote(`Could not start again: ${err.message}`); }
@@ -184,7 +212,8 @@ function findQuoteRanges(text, quote) {
 
 function highlighted(text, quote) {
   const ranges = findQuoteRanges(text, quote);
-  if (!ranges.length) return { node: el("div", { class: "ev-passage" }, text), found: false };
+  const box = (children) => el("div", { class: "ev-passage", tabindex: "0", role: "region", "aria-label": "Source passage" }, children);
+  if (!ranges.length) return { node: box(text), found: false };
   const parts = [];
   let pos = 0;
   for (const [a, b] of ranges) {
@@ -192,7 +221,7 @@ function highlighted(text, quote) {
     pos = b;
   }
   parts.push(text.slice(pos));
-  return { node: el("div", { class: "ev-passage" }, parts), found: true };
+  return { node: box(parts), found: true };
 }
 
 function tierOf(source) {
@@ -208,6 +237,7 @@ function tierPill(source) {
 
 function verdictNote(v) {
   if (!v) return null;
+  if (isUnchecked(v)) return NOT_VERIFIED_NOTE;
   if (v.model === "code:verbatim") return "The sentence appears word for word in the source.";
   if (v.model === "code:official-source") return v.reason;
   return v.reason || null;
@@ -215,7 +245,7 @@ function verdictNote(v) {
 
 function evidenceContent(claim) {
   const v = claim.verdict || {};
-  const look = VERDICT[v.label] || { text: "Not checked", pill: "", icon: "circle-alert" };
+  const look = isUnchecked(v) ? NOT_VERIFIED : VERDICT[v.label] || { text: "Not checked", pill: "", icon: "circle-alert" };
   const nodes = [
     el("div", { class: "ev-head" }, el("span", { class: `pill ${look.pill}` }, icon(look.icon, "icon-sm"), look.text)),
     el("p", { class: "ev-claim" }, claim.text),
@@ -278,12 +308,13 @@ function citeMarks(sentence) {
   return sentence.claim_ids.map((cid) => state.claimById[cid]).filter(Boolean).map((claim) => {
     const nums = [...new Set(claim.chunks.map((c) => state.refBySource[c.source_id]).filter(Boolean))].sort((a, b) => a - b);
     const narrowed = Boolean(claim.parent_claim_id);
+    const unchecked = isUnchecked(claim.verdict);
     return el("button", {
       type: "button",
-      class: `cite${narrowed ? " narrowed" : ""}`,
+      class: `cite${unchecked ? " unverified" : narrowed ? " narrowed" : ""}`,
       "aria-pressed": "false",
       "aria-label": `Show evidence from source ${nums.join(", ") || ""}`.trim(),
-      title: narrowed ? "Verified after narrowing to what the source says" : "Verified against the cited source",
+      title: unchecked ? "Not verified: verification was off for this run" : narrowed ? "Verified after narrowing to what the source says" : "Verified against the cited source",
       onclick: (e) => openEvidence(claim, e.currentTarget),
     }, nums.length ? nums.join(",") : "src");
   });
@@ -297,6 +328,8 @@ function renderReport() {
   const r = state.report;
   const article = document.getElementById("report");
   article.replaceChildren(
+    state.unverified ? el("p", { class: "note note-unverified" }, icon("circle-alert", "icon-sm"),
+      el("span", {}, "Verification was turned off for this run, an evaluation comparison. Its claims were not checked against their sources.")) : "",
     el("h2", {}, "Summary"),
     el("div", { class: "summary" }, r.executive_summary.map((s) => el("p", {}, sentenceNode(s)))));
   for (const section of r.sections) {
@@ -338,11 +371,15 @@ function renderClaims() {
   for (const sq of state.claims.sub_questions) {
     const rows = visible.filter((c) => c.sub_question_id === sq.id);
     if (!rows.length) continue;
-    wrap.append(el("div", { class: "claims-group" }, el("h3", {}, sq.text), rows.map((c) => {
+    wrap.append(el("div", { class: "claims-group" }, el("h2", {}, sq.text), rows.map((c) => {
       const v = c.verdict || {};
+      const unchecked = isUnchecked(v);
       const reason = c.parent_claim_id ? `Narrowed claim. ${v.reason || ""}` : verdictNote(v);
+      const statusIcon = unchecked
+        ? el("span", { class: "status-icon status-unverified", title: "Not verified" }, icon("circle-alert", "icon-sm"))
+        : el("span", { class: `status-icon ${c.kept ? "status-done" : "status-failed"}`, title: c.kept ? "Kept" : "Removed" }, icon(c.kept ? "check" : "x", "icon-sm"));
       return el("div", { class: `claim${c.kept ? "" : " removed"}` },
-        el("span", { class: `status-icon ${c.kept ? "status-done" : "status-failed"}`, title: c.kept ? "Kept" : "Removed" }, icon(c.kept ? "check" : "x", "icon-sm")),
+        statusIcon,
         el("div", { class: "claim-main" }, el("p", { class: "claim-text" }, c.text), reason ? el("p", { class: "claim-reason" }, reason) : null),
         el("button", { type: "button", class: "btn", onclick: () => openEvidence(c) }, icon("quote", "icon-sm"), "Evidence"));
     })));
@@ -367,15 +404,25 @@ function renderMeta() {
   const kept = all.filter((c) => c.kept).length;
   const removed = all.length - kept;
   document.getElementById("claims-count").textContent = String(all.length);
+  const took = state.run?.finished_at && state.run?.created_at
+    ? el("span", { class: "pill", title: "Time the research took" }, icon("history", "icon-sm"), `${Math.max(1, Math.round((utc(state.run.finished_at) - utc(state.run.created_at)) / 1000))} s`)
+    : null;
+  if (state.unverified) {
+    setStatus("done", "Report ready, not verified");
+    document.getElementById("run-meta").append(
+      el("span", { class: "pill", title: NOT_VERIFIED_NOTE }, icon("circle-alert", "icon-sm"), "Verification off"),
+      el("span", { class: "pill", title: "Claims in this run, none checked" }, icon("list-checks", "icon-sm"), `${all.length} unchecked claims`),
+      el("span", { class: "pill pill-sky", title: "Sources cited in the report" }, icon("globe", "icon-sm"), `${state.report.references.length} sources`),
+      took);
+    return;
+  }
   setStatus("done", "Report ready");
   document.getElementById("run-meta").append(
     el("span", { class: "pill pill-mint", title: "Claims that passed verification" }, icon("shield-check", "icon-sm"), `${kept} verified`),
     el("button", { type: "button", class: "pill pill-rose", title: "Show the claims the verifier removed",
       onclick: () => { showTab("claims"); setFilter("rejected"); } }, icon("eraser", "icon-sm"), `${removed} removed`),
     el("span", { class: "pill pill-sky", title: "Sources cited in the report" }, icon("globe", "icon-sm"), `${state.report.references.length} sources`),
-    state.run?.finished_at && state.run?.created_at
-      ? el("span", { class: "pill", title: "Time the research took" }, icon("history", "icon-sm"), `${Math.max(1, Math.round((utc(state.run.finished_at) - utc(state.run.created_at)) / 1000))} s`)
-      : null);
+    took);
 }
 
 async function loadResults() {
@@ -386,6 +433,7 @@ async function loadResults() {
     state.claims = claims;
     state.run = run;
     state.claimById = Object.fromEntries(claims.claims.map((c) => [c.id, c]));
+    state.unverified = claims.claims.length > 0 && claims.claims.every((c) => isUnchecked(c.verdict));
     state.refBySource = Object.fromEntries(report.references.map((r) => [r.source_id, r.number]));
     for (const c of claims.claims) for (const ch of c.chunks) if (ch.source) state.tierBySource[ch.source_id] = ch.source.kind === "file" ? "file" : ch.source.tier;
     renderReport();

@@ -38,6 +38,11 @@ def list_runs(limit: int = 20) -> list[Run]:
         return list(s.exec(select(Run).order_by(col(Run.created_at).desc()).limit(limit)))
 
 
+def count_runs_since(since) -> int:
+    with session_scope() as s:
+        return len(list(s.exec(select(Run.id).where(Run.created_at >= since))))
+
+
 def latest_done_run(question: str, depth: str, id_prefix: str, since) -> Run | None:
     """Newest finished run for this exact question/depth whose id starts with `id_prefix`, created after `since`."""
     with session_scope() as s:

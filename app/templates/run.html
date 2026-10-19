@@ -27,10 +27,10 @@
     <section aria-label="Results">
       <div class="tabs-row">
         <div class="segmented" role="tablist" aria-label="Views">
-          <button role="tab" aria-selected="true" aria-controls="panel-report" data-tab="report">{{ icon("file-text", "icon-sm") }} Report</button>
-          <button role="tab" aria-selected="false" aria-controls="panel-claims" data-tab="claims">{{ icon("list-checks", "icon-sm") }} Claims <span class="count" id="claims-count"></span></button>
-          <button role="tab" aria-selected="false" aria-controls="panel-trail" data-tab="trail">{{ icon("scroll-text", "icon-sm") }} Audit trail</button>
-          {% if settings().dev_mode %}<button role="tab" aria-selected="false" aria-controls="panel-tokens" data-tab="tokens">{{ icon("coins", "icon-sm") }} Tokens (dev)</button>{% endif %}
+          <button role="tab" id="tab-report" aria-selected="true" aria-controls="panel-report" data-tab="report">{{ icon("file-text", "icon-sm") }} Report</button>
+          <button role="tab" id="tab-claims" aria-selected="false" aria-controls="panel-claims" data-tab="claims">{{ icon("list-checks", "icon-sm") }} Claims <span class="count" id="claims-count"></span></button>
+          <button role="tab" id="tab-trail" aria-selected="false" aria-controls="panel-trail" data-tab="trail">{{ icon("scroll-text", "icon-sm") }} Audit trail</button>
+          {% if settings().dev_mode %}<button role="tab" id="tab-tokens" aria-selected="false" aria-controls="panel-tokens" data-tab="tokens">{{ icon("coins", "icon-sm") }} Tokens (dev)</button>{% endif %}
         </div>
         <div class="actions">
           <a id="export-md" class="btn hidden" href="/api/runs/{{ run.id }}/export?fmt=md" aria-label="Download Markdown">{{ icon("download") }}<span class="label">Markdown</span></a>
@@ -38,11 +38,11 @@
         </div>
       </div>
 
-      <div id="panel-report" class="tab-panel" role="tabpanel">
+      <div id="panel-report" aria-labelledby="tab-report" class="tab-panel" role="tabpanel">
         <div id="report-waiting" class="skeleton" aria-label="The report appears here when the run finishes"><span></span><span></span><span></span><span></span><span></span><span></span></div>
         <article id="report" class="report hidden"></article>
       </div>
-      <div id="panel-claims" class="tab-panel hidden" role="tabpanel">
+      <div id="panel-claims" aria-labelledby="tab-claims" class="tab-panel hidden" role="tabpanel">
         <div class="segmented" role="group" aria-label="Filter claims">
           <button data-filter="all" aria-pressed="true">All</button>
           <button data-filter="kept" aria-pressed="false">{{ icon("circle-check", "icon-sm") }} Kept</button>
@@ -50,11 +50,11 @@
         </div>
         <div id="claims"></div>
       </div>
-      <div id="panel-trail" class="tab-panel hidden" role="tabpanel">
+      <div id="panel-trail" aria-labelledby="tab-trail" class="tab-panel hidden" role="tabpanel">
         <ol id="trail" class="trail"></ol>
       </div>
       {% if settings().dev_mode %}
-      <div id="panel-tokens" class="tab-panel hidden dev" role="tabpanel">
+      <div id="panel-tokens" aria-labelledby="tab-tokens" class="tab-panel hidden dev" role="tabpanel">
         <p class="text-sm text-slate">Developer view: Mesh tokens each agent used in this run. Updates live while the run is going.</p>
         <div id="tokens" class="mt-4"></div>
       </div>

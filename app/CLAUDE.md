@@ -21,8 +21,8 @@ API surface (keep stable; the UI and the eval depend on it):
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/api/health` | config sanity (never values of keys) + Mesh balance level (ok/low/stop/unknown) |
-| POST | `/api/runs` | start a run `{question, depth, file_ids}` -> `{run_id}`; 402 below the balance floor |
+| GET | `/api/health` | config sanity (incl. `access_code_required`, `max_runs_per_day`) (never values of keys) + Mesh balance level (ok/low/stop/unknown) |
+| POST | `/api/runs` | start a run `{question, depth, file_ids}` -> `{run_id}`; 402 below the balance floor; 401 without the `X-Access-Code` header when `RUN_ACCESS_CODE` is set; 429 past `MAX_RUNS_PER_DAY` |
 | GET | `/api/runs` / `/api/runs/{id}` | list / one run |
 | GET | `/api/runs/{id}/events` | SSE audit-trail stream |
 | GET | `/api/runs/{id}/report` | report JSON (+ markdown) |
@@ -30,7 +30,7 @@ API surface (keep stable; the UI and the eval depend on it):
 | GET | `/api/runs/{id}/trail` | full audit trail + research log |
 | GET | `/api/runs/{id}/export?fmt=md\|html` | download / printable page |
 | POST | `/api/runs/{id}/followup` | bonus, returns 501 until built |
-| POST | `/api/files` | upload PDF/DOCX/TXT for grounding |
+| POST | `/api/files` | upload PDF/DOCX/TXT for grounding; 422 for empty, scanned or damaged files; needs the access code when set |
 | GET | `/api/runs/{id}/usage` | DEV_MODE only: input/output tokens, calls, cost per agent and per step |
 | GET | `/dev/usage`, `/api/dev/usage` | DEV_MODE only: per-agent tokens across recent runs + average per run |
 

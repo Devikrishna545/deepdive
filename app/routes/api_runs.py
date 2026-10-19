@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import HTMLResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
@@ -16,6 +16,7 @@ from app.db import repository as repo
 from app.export.exporters import to_html
 from app.llm.billing import InsufficientBalance
 from app.routes.deps import get_run_or_404
+from app.routes.guards import require_access_code, require_daily_capacity
 from app.services import run_service
 
 router = APIRouter()
@@ -45,7 +46,7 @@ def _run_summary(run) -> dict:
     }
 
 
-@router.post("", status_code=202)
+@router.post("", status_code=202, dependencies=[Depends(require_access_code), Depends(require_daily_capacity)])
 def create_run(body: RunRequest) -> dict:
     try:
         run_id = run_service.start_run(body.question.strip(), body.depth, body.file_ids)

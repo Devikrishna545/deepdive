@@ -7,7 +7,14 @@ const chips = document.getElementById("file-chips");
 const statusEl = document.getElementById("form-status");
 const submitBtn = document.getElementById("submit");
 const ACCEPT = [".pdf", ".docx", ".txt", ".md"];
+const accessInput = document.getElementById("access-code");
 let files = [];
+
+function showAccessField() {
+  accessInput.classList.remove("hidden");
+  accessInput.value = getAccessCode();
+}
+api("/api/health").then((h) => { if (h.access_code_required) showAccessField(); }).catch(() => {});
 
 function setStatus(text, { error = false, busy = false } = {}) {
   statusEl.className = `form-status${error ? " error" : ""}`;
@@ -41,9 +48,7 @@ function addFiles(list) {
   else setStatus("");
 }
 fileInput.addEventListener("change", () => { addFiles(fileInput.files); fileInput.value = ""; });
-document.getElementById("attach").addEventListener("keydown", (e) => {
-  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); }
-});
+document.getElementById("attach").addEventListener("click", () => fileInput.click());
 
 // Drag and drop onto the composer.
 let depth = 0;
@@ -68,6 +73,7 @@ form.addEventListener("submit", async (event) => {
     question.focus();
     return;
   }
+  if (!accessInput.classList.contains("hidden")) setAccessCode(accessInput.value.trim());
   submitBtn.disabled = true;
   try {
     const fileIds = [];
@@ -75,17 +81,18 @@ form.addEventListener("submit", async (event) => {
       setStatus(`Reading ${file.name}…`, { busy: true });
       const body = new FormData();
       body.append("file", file);
-      const uploaded = await api("/api/files", { method: "POST", body });
+      const uploaded = await api("/api/files", { method: "POST", body, headers: accessHeaders() });
       fileIds.push(uploaded.file_id);
     }
     setStatus("Starting research…", { busy: true });
     const run = await api("/api/runs", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: accessHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ question: text, depth: depthValue, file_ids: fileIds }),
     });
     window.location.href = `/runs/${run.run_id}`;
   } catch (err) {
+    if (/access code/i.test(err.message)) { showAccessField(); accessInput.focus(); }
     setStatus(`Could not start the research: ${err.message}`, { error: true });
     submitBtn.disabled = false;
   }

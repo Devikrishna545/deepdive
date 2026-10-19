@@ -143,6 +143,8 @@ button.pill:hover { filter: brightness(.97); }
 .drop-hint { position: absolute; inset: 0; display: none; place-items: center; border-radius: var(--radius-lg); color: var(--lavender-ink); font-weight: 500; pointer-events: none; }
 .composer.dragging .drop-hint { display: grid; }
 .composer.dragging > :not(.drop-hint) { visibility: hidden; }
+.access-input { height: 40px; width: 9.5em; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-2); font-size: .9rem; }
+.access-input:focus-visible { outline: 2px solid var(--lavender-ink); outline-offset: 1px; }
 .file-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .file-chips:empty { display: none; }
 .file-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px; border-radius: 999px; background: var(--sky); color: var(--sky-ink); font-size: .85rem; max-width: 100%; }
@@ -169,6 +171,7 @@ button.pill:hover { filter: brightness(.97); }
 .status-done { background: var(--mint); color: var(--mint-ink); }
 .status-running, .status-queued { background: var(--lavender); color: var(--lavender-ink); }
 .status-failed { background: var(--rose); color: var(--rose-ink); }
+.status-unverified { background: var(--surface-2); color: var(--muted); }
 .empty { padding: 28px 16px; text-align: center; color: var(--muted); }
 
 /* ------------------------------------------------------------------ run page */
@@ -196,6 +199,8 @@ button.pill:hover { filter: brightness(.97); }
 
 .run-body { margin-top: 28px; display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 32px; align-items: start; }
 .tabs-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; position: sticky; top: 60px; z-index: 10; padding: 10px 0; background: var(--bg); }
+.tabs-row > .segmented { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.tabs-row > .segmented::-webkit-scrollbar { display: none; }
 .tabs-row .actions { margin-left: auto; display: flex; gap: 6px; }
 .tab-panel { padding-top: 14px; }
 
@@ -207,6 +212,7 @@ button.pill:hover { filter: brightness(.97); }
 .report .summary { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 20px 24px; }
 .report .note { font-family: var(--sans); font-size: .86rem; display: flex; gap: 8px; align-items: flex-start; border-radius: var(--radius-sm); padding: 8px 12px; margin-bottom: .8em; }
 .report .note-limited { background: var(--apricot); color: var(--apricot-ink); }
+.report .note-unverified { background: var(--surface-2); color: var(--ink); border: 1px dashed var(--line); margin-bottom: 1.4em; }
 .report .empty-section { color: var(--muted); font-family: var(--sans); font-size: .95rem; }
 .report ul.plain { font-family: var(--sans); font-size: .95rem; line-height: 1.6; }
 .report ul.plain li { position: relative; padding-left: 18px; margin: 6px 0; }
@@ -219,6 +225,9 @@ button.pill:hover { filter: brightness(.97); }
 .cite.narrowed { background: var(--apricot); color: var(--apricot-ink); }
 .cite:hover, .cite[aria-pressed="true"] { background: var(--mint-ink); color: var(--surface); }
 .cite.narrowed:hover, .cite.narrowed[aria-pressed="true"] { background: var(--apricot-ink); color: var(--surface); }
+/* Unchecked claims (verification off) never use the "verified" mint. */
+.cite.unverified { background: var(--surface-2); color: var(--muted); outline: 1px dashed var(--line); }
+.cite.unverified:hover, .cite.unverified[aria-pressed="true"] { background: var(--muted); color: var(--surface); }
 
 .refs { font-family: var(--sans); font-size: .9rem; counter-reset: ref; }
 .refs li { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-top: 1px solid var(--line); }
@@ -256,7 +265,7 @@ dialog.sheet[open] { animation: sheet-up .22s ease-out; }
 
 /* Claims tab */
 .claims-group { margin-top: 22px; }
-.claims-group h3 { font-size: .95rem; font-weight: 600; margin-bottom: 10px; }
+.claims-group h2 { font-size: .95rem; font-weight: 600; margin-bottom: 10px; }
 .claim { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
 .claim + .claim { margin-top: 8px; }
 .claim .status-icon { margin-top: 1px; }
@@ -282,7 +291,7 @@ dialog.sheet[open] { animation: sheet-up .22s ease-out; }
 
 .state-card { display: flex; gap: 14px; align-items: flex-start; padding: 18px 20px; border-radius: var(--radius-lg); background: var(--surface); border: 1px solid var(--line); }
 .state-card .bubble { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; flex: none; }
-.state-card h2 { font-size: 1rem; font-weight: 600; }
+.state-card h2, .state-card .h2-like { font-size: 1rem; font-weight: 600; }
 .state-card p { margin-top: 4px; color: var(--muted); font-size: .93rem; }
 .state-card .btn { margin-top: 12px; }
 .skeleton { display: grid; gap: 12px; max-width: 68ch; }
@@ -299,7 +308,7 @@ dialog.sheet[open] { animation: sheet-up .22s ease-out; }
   .page { padding: 20px 16px 64px; }
   .appbar-inner { padding: 0 16px; }
   .navlink .label { display: none; }
-  .steps { grid-template-columns: repeat(6, minmax(44px, 1fr)); overflow-x: auto; }
+  .steps { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 2px; }
   .step .name { font-size: .72rem; }
   .step .dot { width: 32px; height: 32px; }
   .step::before { top: 15px; }
@@ -309,6 +318,14 @@ dialog.sheet[open] { animation: sheet-up .22s ease-out; }
   .report .summary { padding: 16px 18px; }
   .claim { flex-wrap: wrap; }
   .claim .btn { margin-left: 38px; }
+}
+@media (max-width: 380px) {
+  .progress { padding: 14px 10px; }
+  .step .dot { width: 28px; height: 28px; }
+  .step .dot .icon { width: 15px; height: 15px; }
+  .step::before { top: 13px; }
+  .step .name { font-size: .64rem; }
+  .segmented button { padding: 6px 10px; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

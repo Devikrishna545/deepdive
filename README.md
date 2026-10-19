@@ -103,6 +103,12 @@ used, which often rate-limits and returns nothing. `python -m scripts.check_sear
 search before you spend credits; a run that finds no sources at all stops before drafting.
 Search is not an LLM call.
 
+Hosting it publicly: set `RUN_ACCESS_CODE` so only people with the code can start research (they
+type it once on the home page; reading reports stays open), and `MAX_RUNS_PER_DAY` to cap credit
+spend (extra runs get a 429 with a plain message). Keep `DEV_MODE=false`. The app sends security
+headers (CSP, no framing, `nosniff`, HSTS behind HTTPS) and shows a 404 page for unknown runs.
+`requirements.txt` pins the exact versions behind the published results (Python 3.11-3.14).
+
 ## Self-evaluation
 
 We measure two things separately: whether the verifier catches bad citations (labelled pairs

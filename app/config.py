@@ -60,6 +60,11 @@ class Settings(BaseSettings):
 
     # Developer views (per-agent token usage). Set DEV_MODE=false for the demo / judges.
     dev_mode: bool = False  # True shows the developer token views; keep off for demos and judging
+    # Public hosting: starting research or uploading spends Mesh credit, so a hosted demo can ask
+    # for an access code (empty = open, for local use) and cap runs per 24 hours (0 = no cap).
+    # Reading finished reports is always open.
+    run_access_code: str = ""
+    max_runs_per_day: int = 0
 
     # Storage
     database_url: str = "sqlite:///data/deepdive.db"

@@ -1,31 +1,33 @@
+# Exact versions that produced the benchmark and evaluation results (Python 3.11-3.14).
 # --- Web framework (required by the hackathon checks) ---
-fastapi>=0.115
-uvicorn[standard]>=0.30
-jinja2>=3.1
-python-multipart>=0.0.9
-sse-starlette>=2.1
+fastapi==0.143.1
+uvicorn[standard]==0.54.0
+jinja2==3.1.6
+python-multipart==0.0.32
+sse-starlette==3.5.0
 
 # --- LLM client used through Mesh API (OpenAI-compatible gateway) ---
-openai>=1.40
+openai==3.31.0
 
 # --- Orchestration ---
-langgraph>=0.2
+langgraph==1.2.15
 
 # --- Data and validation ---
-pydantic>=2.7
-pydantic-settings>=2.3
-sqlmodel>=0.0.21
-numpy>=1.26
+pydantic==2.14.1
+pydantic-settings==2.16.0
+sqlmodel==0.0.48
+numpy==2.5.4; python_version >= "3.12"
+numpy==2.4.6; python_version < "3.12"  # numpy 2.5 needs Python 3.12+
 
 # --- Retrieval tools (search and fetch are not LLM calls) ---
-httpx>=0.27
-trafilatura>=1.12
-ddgs>=9.0
-tavily-python>=0.5
-pymupdf>=1.24
-python-docx>=1.1
+httpx==0.28.1
+trafilatura==2.3.1
+ddgs==9.16.0
+tavily-python==0.8.5
+pymupdf==1.28.2
+python-docx==1.2.0
 
 # --- Utilities ---
-python-dotenv>=1.0
-tenacity>=8.5
-markdown>=3.6
+python-dotenv==1.2.4
+tenacity==9.2.1
+markdown==3.11.1

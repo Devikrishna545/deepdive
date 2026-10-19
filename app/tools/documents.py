@@ -20,6 +20,13 @@ from app.llm.mesh_client import get_mesh
 from app.tools.chunker import split_text
 
 ALLOWED_SUFFIXES = {".pdf", ".docx", ".txt", ".md"}
+# Web pages are cut at MIN_CHUNK_CHARS to drop menus and footers; a person's own file is kept almost
+# whole (a one-line note is still evidence they chose to give us).
+DOC_MIN_CHUNK_CHARS = 20
+
+
+class DocumentError(ValueError):
+    """The file cannot be used: unreadable, or no text in it (e.g. a scanned PDF without a text layer)."""
 
 
 def _read_pages(path: Path) -> list[tuple[int | None, str]]:
@@ -37,8 +44,13 @@ def _read_pages(path: Path) -> list[tuple[int | None, str]]:
 
 
 def ingest_document(path: Path, filename: str) -> Document:
-    pages = _read_pages(path)
-    pieces = [(page, text) for page, page_text in pages for text in split_text(page_text)]
+    try:
+        pages = _read_pages(path)
+    except Exception as exc:  # corrupt or mislabelled file: tell the person, never a 500
+        raise DocumentError(f"Could not read {filename}: the file looks damaged or is not a real {path.suffix.lstrip('.').upper()}.") from exc
+    pieces = [(page, text) for page, page_text in pages for text in split_text(page_text, min_chars=DOC_MIN_CHUNK_CHARS)]
+    if not pieces:
+        raise DocumentError(f"{filename} has no readable text. Scanned PDFs need a text layer (run OCR first).")
     vectors = get_mesh().embed([t for _, t in pieces]) if pieces else []
     doc = Document(id=new_id("doc"), filename=filename, pages=len(pages))
     with session_scope() as s:

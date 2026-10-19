@@ -11,10 +11,24 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 
 BASE_DIR = Path(__file__).parent
+
+# Pages load only our own scripts and Google Fonts. Inline scripts are allowed for the two tiny
+# ones in base.html (theme before first paint, icon sprite path); API text is never inserted as
+# HTML (el() uses textContent), which is the real XSS defence.
+CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+       "font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data:; connect-src 'self'; "
+       "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'")
+SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+}
+API_DOC_PATHS = ("/docs", "/redoc", "/openapi.json")  # Swagger UI loads its own CDN assets
 
 
 def create_app() -> FastAPI:
@@ -35,6 +49,17 @@ def create_app() -> FastAPI:
         version="0.1.0",
         lifespan=lifespan,
     )
+    @app.middleware("http")
+    async def security_headers(request: Request, call_next):
+        response = await call_next(request)
+        for name, value in SECURITY_HEADERS.items():
+            response.headers.setdefault(name, value)
+        if not request.url.path.startswith(API_DOC_PATHS):
+            response.headers.setdefault("Content-Security-Policy", CSP)
+        if request.headers.get("x-forwarded-proto", request.url.scheme) == "https":
+            response.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
+        return response
+
     app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
     app.include_router(pages.router)
     app.include_router(health.router, prefix="/api")

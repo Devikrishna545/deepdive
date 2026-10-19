@@ -13,13 +13,14 @@
       placeholder="What are the UAE corporate tax rates and when did they take effect?"></textarea>
     <div id="file-chips" class="file-chips" aria-live="polite"></div>
     <div class="composer-bar">
-      <input id="files" type="file" multiple accept=".pdf,.docx,.txt,.md" class="sr-only">
-      <label for="files" class="btn" role="button" tabindex="0" id="attach">{{ icon("paperclip") }}<span>Add documents</span></label>
+      <input id="files" type="file" multiple accept=".pdf,.docx,.txt,.md" class="sr-only" tabindex="-1" aria-hidden="true">
+      <button type="button" class="btn" id="attach">{{ icon("paperclip") }}<span>Add documents</span></button>
       <fieldset class="segmented" aria-label="Research depth">
         <label title="3 sub-questions, about a minute"><input type="radio" name="depth" value="quick" checked>Quick</label>
         <label title="More sub-questions and sources, a few minutes"><input type="radio" name="depth" value="standard">Thorough</label>
       </fieldset>
       <span class="spacer"></span>
+      <input id="access-code" class="access-input hidden" type="password" autocomplete="off" placeholder="Access code" aria-label="Access code for this demo">
       <button type="submit" id="submit" class="btn btn-primary btn-round" aria-label="Start research">{{ icon("arrow-up") }}</button>
     </div>
   </form>

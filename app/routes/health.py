@@ -28,6 +28,8 @@ def health() -> dict:
         "mesh_base_url": s.mesh_base_url,
         "search_provider": "tavily" if s.tavily_api_key else "duckduckgo",
         "verify_enabled": s.verify_enabled,
+        "access_code_required": bool(s.run_access_code),
+        "max_runs_per_day": s.max_runs_per_day,
         "models": {
             "planner": s.model_planner,
             "researcher": s.model_researcher,

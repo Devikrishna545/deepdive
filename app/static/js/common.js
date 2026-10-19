@@ -41,6 +41,21 @@ async function api(path, options = {}) {
   return resp.json();
 }
 
+// Access code for hosted demos (only asked for when the server requires one). Remembered in this
+// browser when storage is allowed; sent with requests that start research or upload files.
+const ACCESS_KEY = "deepdive-access-code";
+function getAccessCode() {
+  try { return localStorage.getItem(ACCESS_KEY) || ""; } catch (_) { return window.__accessCode || ""; }
+}
+function setAccessCode(code) {
+  window.__accessCode = code;
+  try { if (code) localStorage.setItem(ACCESS_KEY, code); else localStorage.removeItem(ACCESS_KEY); } catch (_) { /* storage blocked */ }
+}
+function accessHeaders(extra = {}) {
+  const code = getAccessCode();
+  return code ? { ...extra, "X-Access-Code": code } : extra;
+}
+
 function safeUrl(url) {
   try {
     const u = new URL(url);

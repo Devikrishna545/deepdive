@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon with context %}
+{% block title %}DeepDive — research not found{% endblock %}
+{% block content %}
+<section class="home">
+  <div class="state-card">
+    <span class="bubble pill-apricot">{{ icon("search") }}</span>
+    <div>
+      <h1 class="h2-like">This research doesn't exist</h1>
+      <p>The link may be mistyped, or the research was made on another copy of DeepDive.</p>
+      <a class="btn" href="/">{{ icon("plus") }} Start new research</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

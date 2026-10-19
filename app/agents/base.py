@@ -24,5 +24,7 @@ def load_prompt(agent: str, name: str = "prompt.md") -> str:
 
 
 def chunk_block(chunk_id: str, text: str, url: str = "") -> str:
+    # Web text must not be able to close or open a CHUNK block and pose as our own framing.
+    text = text.replace("<CHUNK", "&lt;CHUNK").replace("</CHUNK", "&lt;/CHUNK")
     origin = f" | {url}" if url else ""
     return f"<CHUNK id={chunk_id}{origin}>\n{text}\n</CHUNK>"

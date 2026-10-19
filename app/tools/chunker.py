@@ -26,7 +26,7 @@ _STOP = set(
 )
 
 
-def split_text(text: str) -> list[str]:
+def split_text(text: str, min_chars: int = MIN_CHUNK_CHARS) -> list[str]:
     text = clean_markdown(text)
     paragraphs = [p.strip() for p in re.split(r"\n\s*\n|\n", text) if p.strip()]
     chunks: list[str] = []
@@ -45,7 +45,7 @@ def split_text(text: str) -> list[str]:
             current = (current[-OVERLAP_CHARS:] + "\n" + para).strip() if current else para
     if current:
         chunks.append(current)
-    return [c for c in chunks if len(c) >= MIN_CHUNK_CHARS]
+    return [c for c in chunks if len(c) >= min_chars]
 
 
 def _terms(text: str) -> set[str]:
