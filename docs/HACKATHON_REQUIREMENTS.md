@@ -9,12 +9,13 @@ become demonstrable. "Where" is the file or command that proves it.
 | --- | --- | --- |
 | Every LLM/AI call routes through Mesh API (`base_url=https://api.meshapi.ai/v1`, key from `MESH_API_KEY`) | `app/llm/mesh_client.py` is the only model client; `scripts/check_mesh_only.py` in CI | Done |
 | (Own rule) Spend credits carefully | balance guard ($5 alert, $1 floor), per-run USD cap, live prices, `scripts/mesh_account.py` | Done |
-| Public GitHub repo with all code | create repo, push | To do |
+| Public GitHub repo with all code | https://github.com/Devikrishna545/deepdive (check it is set to Public) | Done |
 | `requirements.txt` lists a web framework (FastAPI) and the LLM client used with Mesh (`openai`) | `requirements.txt` | Done |
 | `README.md`: what we built, how agents cooperate, how to run, key design decisions, self-evaluation results | `README.md`, `docs/DESIGN_DECISIONS.md`, eval block | Partly (results pending) |
 | `.gitignore` includes `.env`; no secrets committed | `.gitignore`, gitleaks in CI | Done |
 | Repo secrets `MESH_API_KEY` and `SUBMISSION_TOKEN` (Settings → Secrets and variables → Actions) | GitHub settings | Done |
-| Optional: demo video + deployed URL | — | Later |
+| Optional: demo video + deployed URL | — | Video: to do (19–20 Oct) |
+| (Own rule) Developer views hidden for judges | `DEV_MODE` defaults to `false` | Done |
 
 ## What to build (judged)
 

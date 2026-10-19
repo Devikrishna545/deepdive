@@ -8,6 +8,15 @@ was kept, what was rejected, and why.
 Built for **Agent Arena 2026 · Track 01 (DeepDive)**. All LLM and embedding calls go through
 **[Mesh API](https://meshapi.ai)**.
 
+![Report with the evidence panel: the verifier's quoted words are highlighted in the source passage](docs/screenshots/report-evidence.png)
+
+| Removed claims, with the verifier's reason | Phone, dark mode |
+| --- | --- |
+| ![The verifier removed "The EU banned the sale of new petrol cars starting in 2024"](docs/screenshots/removed-claims.png) | ![Evidence sheet on a phone](docs/screenshots/mobile-evidence-dark.png) |
+
+_Screenshots are real runs: "Transformers are the breakthrough to the new artificial intelligence" and
+the false-premise benchmark question "Why did the EU ban the sale of new petrol cars in 2024?"._
+
 ## How the agents cooperate
 
 ```mermaid

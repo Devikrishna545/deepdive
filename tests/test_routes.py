@@ -76,7 +76,11 @@ def test_runs_blocked_below_floor(monkeypatch):
     assert resp.status_code == 402 and "balance" in resp.json()["detail"].lower()
 
 
-def test_dev_token_usage_per_agent(fake_world):
+def test_dev_token_usage_per_agent(fake_world, monkeypatch):
+    from app.config import get_settings
+
+    monkeypatch.setenv("DEV_MODE", "true")  # developer views are off by default
+    get_settings.cache_clear()
     run_id = "run_tokens"
     q = "What are the main risks of the battery market?"
     repo.create_run(run_id, q, "standard", [])
@@ -92,6 +96,14 @@ def test_dev_token_usage_per_agent(fake_world):
         assert recent["done_runs"] == 1 and recent["average_per_done_run"][0]["prompt_tokens"] > 0
         page = c.get(f"/runs/{run_id}").text
         assert "Tokens (dev)" in page
+    get_settings.cache_clear()
+
+
+def test_dev_mode_is_off_by_default(monkeypatch):
+    from app.config import Settings
+
+    monkeypatch.delenv("DEV_MODE", raising=False)
+    assert Settings(_env_file=None).dev_mode is False
 
 
 def test_dev_views_hidden_when_dev_mode_off(monkeypatch):

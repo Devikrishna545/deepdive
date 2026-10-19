@@ -3,7 +3,7 @@
 Usage (needs MESH_API_KEY; every command spends credits, so start small):
     python -m evaluation.run_eval --set verifier                         # 16 short calls, cents
     python -m evaluation.run_eval --set questions --limit 3 --max-usd 0.5
-    python -m evaluation.run_eval --set questions --limit 3 --ablation   # same questions, verification off
+    python -m evaluation.run_eval --set questions --limit 3 --ablation   # normal run AND verification off
     python -m evaluation.run_eval --set all --limit 5 --depth quick --max-usd 1.0
 
 The question set stops early when --max-usd is spent or the Mesh balance falls below
@@ -67,6 +67,11 @@ def eval_verifier() -> dict:
 
 
 # ------------------------------------------------------------------ full runs on test questions
+# The judge (gemini-2.5-flash) is a thinking model: hidden reasoning counts against max_tokens, and a
+# 100-250 cap made it stop before answering (same failure as the benchmark judge). Low effort keeps cost down.
+JUDGE_MAX_TOKENS = 1500
+
+
 def _judge_groundedness(report: dict, snapshot: dict, judge_model: str) -> dict:
     from app.agents.base import chunk_block, load_prompt
     from app.core.guards import apply_quote_guard
@@ -87,7 +92,8 @@ def _judge_groundedness(report: dict, snapshot: dict, judge_model: str) -> dict:
             system=load_prompt("verifier"),
             user=f"CLAIM: {sentence['text']}\n\nSOURCE:\n" + "\n\n".join(chunk_block(c, chunks[c]["text"]) for c in chunk_ids if c in chunks),
             schema=VerdictOut,
-            max_tokens=250,
+            max_tokens=JUDGE_MAX_TOKENS,
+            reasoning_effort="low",
         )
         v = apply_quote_guard(Verdict(claim_id="eval", label=out.label, reason=out.reason, evidence_quote=out.evidence_quote), texts)
         labels.append(v.label.value)
@@ -109,7 +115,8 @@ def _judge_coverage(question: dict, markdown: str, judge_model: str) -> float | 
         "Return `covered` as a list of booleans in the same order as the key points.",
         user="KEY POINTS:\n" + "\n".join(f"{i + 1}. {p}" for i, p in enumerate(points)) + f"\n\nREPORT:\n{markdown[:12000]}",
         schema=CoverageOut,
-        max_tokens=100,
+        max_tokens=JUDGE_MAX_TOKENS,
+        reasoning_effort="low",
     )
     return safe_div(sum(out.covered[: len(points)]), len(points))
 
@@ -227,7 +234,8 @@ def main() -> None:
     parser.add_argument("--limit", type=int, default=5, help="only the first N questions (default 5 to save credits)")
     parser.add_argument("--depth", choices=["quick", "standard"], default="quick")
     parser.add_argument("--max-usd", type=float, default=1.0, help="stop the question set after this much spend")
-    parser.add_argument("--ablation", action="store_true", help="questions only: run with verification off")
+    parser.add_argument("--ablation", action="store_true",
+                        help="questions: also run the same questions with verification off (both go in one README block)")
     args = parser.parse_args()
 
     results: dict = {}
@@ -235,9 +243,12 @@ def main() -> None:
         results["verifier"] = eval_verifier()
         print("verifier:", {k: v for k, v in results["verifier"].items() if k != "rows"})
     if args.set in ("questions", "all"):
-        key = "ablation" if args.ablation else "questions"
-        results[key] = eval_questions(args.limit, args.ablation, args.depth, args.max_usd)
-        print(f"{key}:", results[key]["summary"])
+        # The ablation runs in the same call as the normal run: write_results replaces the README
+        # block, so two separate calls would leave only the last one's table.
+        for ablation in ([False, True] if args.ablation else [False]):
+            key = "ablation" if ablation else "questions"
+            results[key] = eval_questions(args.limit, ablation, args.depth, args.max_usd)
+            print(f"{key}:", results[key]["summary"])
     print("written to", write_results(results))
 
 

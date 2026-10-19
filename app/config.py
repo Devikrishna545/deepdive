@@ -59,7 +59,7 @@ class Settings(BaseSettings):
     contradiction_similarity: float = 0.85
 
     # Developer views (per-agent token usage). Set DEV_MODE=false for the demo / judges.
-    dev_mode: bool = True
+    dev_mode: bool = False  # True shows the developer token views; keep off for demos and judging
 
     # Storage
     database_url: str = "sqlite:///data/deepdive.db"
