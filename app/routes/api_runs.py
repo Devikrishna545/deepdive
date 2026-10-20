@@ -18,6 +18,7 @@ from app.llm.billing import InsufficientBalance
 from app.routes.deps import get_run_or_404
 from app.routes.guards import require_access_code, require_daily_capacity
 from app.services import run_service
+from app.tools import documents
 
 router = APIRouter()
 
@@ -34,12 +35,15 @@ class RunRequest(BaseModel):
 class FollowUpRequest(BaseModel):
     question: str = Field(min_length=5, max_length=500)
     depth: str | None = Field(default=None, pattern="^(quick|standard)$")
+    file_ids: list[str] | None = None  # the documents to use; None: the earlier run's documents
+    web_search: bool | None = None  # None: keep the earlier run's choice
 
 
 class RerunRequest(BaseModel):
     question: str = Field(min_length=10, max_length=500)
     depth: str = Field(default="standard", pattern="^(quick|standard)$")
     web_search: bool | None = None  # None: keep the original run's choice
+    file_ids: list[str] | None = None  # the documents to use; None: the original run's documents
 
 
 class DeleteRequest(BaseModel):
@@ -90,7 +94,10 @@ def get_run(run_id: str) -> dict:
     """One run, plus the research thread it belongs to: the runs it follows from (oldest first)
     and the follow-ups started from it."""
     run = get_run_or_404(run_id)
+    file_ids = json.loads(run.file_ids_json or "[]")
+    docs = documents.get_documents(file_ids)
     return _run_summary(run) | {
+        "files": [{"id": f, "filename": docs[f].filename} for f in file_ids if f in docs],
         "thread": [{"id": r.id, "question": r.question} for r in run_service.thread_of(run)],
         "followups": [{"id": r.id, "question": r.question, "status": r.status} for r in repo.list_followups(run_id)],
     }
@@ -126,9 +133,10 @@ def rerun(run_id: str, body: RerunRequest) -> dict:
         raise HTTPException(status_code=409, detail="This research is still running; edit it once it finishes.")
     parent = repo.get_run(old.parent_run_id) if old.parent_run_id else None
     try:
-        new_id = run_service.start_run(body.question.strip(), body.depth, json.loads(old.file_ids_json or "[]"),
+        files = json.loads(old.file_ids_json or "[]") if body.file_ids is None else body.file_ids
+        new_id = run_service.start_run(body.question.strip(), body.depth, files,
                                        parent_run_id=parent.id if parent and parent.status == "done" else None,
-                                       web_addon=old.web_addon if body.web_search is None else body.web_search)
+                                       web_addon=bool(files) and (old.web_addon if body.web_search is None else body.web_search))
     except InsufficientBalance as exc:
         raise HTTPException(status_code=402, detail=str(exc)) from exc
     return {"run_id": new_id, "status": "queued", "replaces": run_id}
@@ -243,9 +251,10 @@ def follow_up(run_id: str, body: FollowUpRequest) -> dict:
     parent = get_run_or_404(run_id)
     _require_done(parent)
     try:
-        new_id = run_service.start_run(body.question.strip(), body.depth or parent.depth,
-                                       json.loads(parent.file_ids_json or "[]"), parent_run_id=parent.id,
-                                       web_addon=parent.web_addon)
+        files = json.loads(parent.file_ids_json or "[]") if body.file_ids is None else body.file_ids
+        web = parent.web_addon if body.web_search is None else body.web_search
+        new_id = run_service.start_run(body.question.strip(), body.depth or parent.depth, files,
+                                       parent_run_id=parent.id, web_addon=bool(files) and web)
     except InsufficientBalance as exc:
         raise HTTPException(status_code=402, detail=str(exc)) from exc
     return {"run_id": new_id, "status": "queued", "parent_run_id": parent.id}

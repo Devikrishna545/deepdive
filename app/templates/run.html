@@ -22,18 +22,21 @@
     <form id="edit-run" class="composer composer-compact edit-run hidden" novalidate>
       <label for="edit-q" class="sr-only">Edited question</label>
       <textarea id="edit-q" rows="2" minlength="10" maxlength="500">{{ run.question }}</textarea>
+      <div class="file-chips" id="edit-chips" aria-live="polite"></div>
       <div class="composer-bar">
+        <input id="edit-files" type="file" multiple accept=".pdf,.docx,.txt,.md" class="sr-only" tabindex="-1" aria-hidden="true">
+        <button type="button" class="btn btn-sm" id="edit-attach">{{ icon("paperclip", "icon-sm") }}<span>Add documents</span></button>
         <fieldset class="segmented" aria-label="Research depth">
           <label title="3 sub-questions, about a minute"><input type="radio" name="edit-depth" value="quick"{% if run.depth == "quick" %} checked{% endif %}>Quick</label>
           <label title="More sub-questions and sources, a few minutes"><input type="radio" name="edit-depth" value="standard"{% if run.depth != "quick" %} checked{% endif %}>Thorough</label>
         </fieldset>
-        {% if run.file_ids_json and run.file_ids_json != "[]" %}<label class="web-toggle" title="For questions about your documents: answer from them first, search the web only for parts they don't answer"><input type="checkbox" id="edit-web"{% if run.web_addon %} checked{% endif %}>{{ icon("globe", "icon-sm") }}<span>Also search the web</span></label>{% endif %}
+        <label class="web-toggle hidden" id="edit-web-toggle" title="For questions about your documents: read them first, plus the web"><input type="checkbox" id="edit-web"{% if run.web_addon %} checked{% endif %}>{{ icon("globe", "icon-sm") }}<span>Also search the web</span></label>
         <span class="spacer"></span>
         <input id="edit-access" class="access-input hidden" type="password" autocomplete="off" placeholder="Access code" aria-label="Access code for this demo">
         <button type="button" class="btn" id="edit-cancel">Cancel</button>
         <button type="submit" class="btn btn-primary" id="edit-submit">{{ icon("repeat-2") }}<span>Run again</span></button>
       </div>
-      <p class="edit-note">Starts a new run with the same documents{% if run.parent_run_id %} and the same earlier research{% endif %}. This one stays in your list.</p>
+      <p class="edit-note">Starts a new run with the documents shown{% if run.parent_run_id %} and the same earlier research{% endif %}. This one stays in your list.</p>
     </form>
     <p id="edit-status" class="form-status" role="status"></p>
   </header>
@@ -75,7 +78,11 @@
           <form id="followup-form" class="composer composer-compact" novalidate>
             <label for="followup-q" class="sr-only">Follow-up question</label>
             <textarea id="followup-q" rows="2" minlength="5" maxlength="500" placeholder="What would you like to know next? For example: how does this compare with last year?"></textarea>
+            <div class="file-chips" id="followup-chips" aria-live="polite"></div>
             <div class="composer-bar">
+              <input id="followup-files" type="file" multiple accept=".pdf,.docx,.txt,.md" class="sr-only" tabindex="-1" aria-hidden="true">
+              <button type="button" class="btn btn-sm" id="followup-attach">{{ icon("paperclip", "icon-sm") }}<span>Add documents</span></button>
+              <label class="web-toggle hidden" id="followup-web-toggle" title="For questions about your documents: read them first, plus the web"><input type="checkbox" id="followup-web"{% if run.web_addon %} checked{% endif %}>{{ icon("globe", "icon-sm") }}<span>Also search the web</span></label>
               <span class="spacer"></span>
               <input id="followup-access" class="access-input hidden" type="password" autocomplete="off" placeholder="Access code" aria-label="Access code for this demo">
               <button type="submit" class="btn btn-primary" id="followup-submit">{{ icon("search") }}<span>Research further</span></button>

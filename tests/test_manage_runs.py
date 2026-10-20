@@ -78,3 +78,38 @@ def test_deleting_needs_the_access_code_when_set(fake_world, monkeypatch):
         assert c.post("/api/runs/delete", json={"run_ids": ["run_x"]}).status_code == 401
         assert c.post("/api/runs/run_x/rerun", json={"question": Q}).status_code == 401
         assert c.delete("/api/runs/run_x", headers={"X-Access-Code": "judges-2026"}).status_code == 200
+
+
+def test_rerun_and_follow_up_can_change_the_documents_and_web_choice(fake_world, monkeypatch, tmp_path):
+    from app.tools import documents
+
+    def doc(name: str) -> str:
+        path = tmp_path / name
+        path.write_text("A passage long enough to be kept as evidence for the tests of documents. " * 3)
+        return documents.ingest_document(path, name).id
+
+    a, b = doc("a.txt"), doc("b.txt")
+    _done("run_docs", "What does this attached report say?", files=[a])
+    started: list = []
+    with _client(monkeypatch, started) as c:
+        info = c.get("/api/runs/run_docs").json()
+        assert info["files"] == [{"id": a, "filename": "a.txt"}]  # shown in the edit and follow-up forms
+        # edit & run again with one document removed and another added, web on
+        r = c.post("/api/runs/run_docs/rerun", json={"question": "What does this attached report say now?",
+                                                     "file_ids": [b], "web_search": True}).json()
+        new = repo.get_run(r["run_id"])
+        assert json.loads(new.file_ids_json) == [b] and new.web_addon is True
+        # without file_ids: the original documents are kept
+        r = c.post("/api/runs/run_docs/rerun", json={"question": "What does this attached report say again?"}).json()
+        assert json.loads(repo.get_run(r["run_id"]).file_ids_json) == [a]
+        # follow-up with an extra document and the web
+        r = c.post("/api/runs/run_docs/followup", json={"question": "And what does the second file add?",
+                                                        "file_ids": [a, b], "web_search": True}).json()
+        follow = repo.get_run(r["run_id"])
+        assert json.loads(follow.file_ids_json) == [a, b] and follow.web_addon is True
+        assert follow.parent_run_id == "run_docs"
+        # all documents removed: the web switch means nothing and is stored off
+        r = c.post("/api/runs/run_docs/followup", json={"question": "What else is known about this?",
+                                                        "file_ids": [], "web_search": True}).json()
+        nofiles = repo.get_run(r["run_id"])
+        assert json.loads(nofiles.file_ids_json) == [] and nofiles.web_addon is False

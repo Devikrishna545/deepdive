@@ -130,8 +130,11 @@ python run.py                                            # http://127.0.0.1:8000
   watch the pipeline, read the report, click any citation mark to see
   the exact passage, open the **Claims** tab to see what was removed, and the **Audit trail** tab.
 - Fix a question: **Edit & run again** (on a finished run) opens the question and depth for editing
-  and starts a corrected run with the same documents and, for a follow-up, the same earlier
-  research. The original run is kept.
+  and starts a corrected run with, for a follow-up, the same earlier research. The original run is
+  kept. The run's documents are listed and can be removed, more can be added, and **Also search
+  the web** can be switched; the new run uses exactly the documents shown.
+- **Continue this research** has the same document controls, so a follow-up can bring in a new
+  paper or report next to the earlier ones, with or without the web.
 - Spotted a mistake mid-run? **Stop** ends the run before its next step (calls already sent
   finish; no new ones start) and opens the question editor at once. The stopped run keeps its
   audit trail so far. Every search and page it read is already cached, so the corrected run reuses

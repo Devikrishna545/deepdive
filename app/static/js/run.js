@@ -572,6 +572,53 @@ function setFollowUpStatus(text, error = false) {
   followUpStatus.replaceChildren(error ? icon("circle-alert", "icon-sm") : icon("loader-circle", "icon-sm spin"), text);
 }
 
+// ------------------------------------------------------------------ documents for a re-run or follow-up
+// The run's documents are listed (removable) and more can be added; the new run uses exactly the
+// documents shown. New files are uploaded only when the form is submitted.
+const DOC_TYPES = [".pdf", ".docx", ".txt", ".md"];
+
+function documentPicker(prefix, onSkipped) {
+  const input = document.getElementById(`${prefix}-files`);
+  const chips = document.getElementById(`${prefix}-chips`);
+  const webToggle = document.getElementById(`${prefix}-web-toggle`);
+  const picker = { existing: [], added: [] };  // existing: {id, filename}; added: File objects
+  const chip = (name, remove) => el("span", { class: "file-chip" }, icon("file-text", "icon-sm"), el("span", { title: name }, name),
+    el("button", { type: "button", "aria-label": `Remove ${name}`, onclick: remove }, icon("x", "icon-sm")));
+  picker.render = () => {
+    chips.replaceChildren(
+      ...picker.existing.map((f) => chip(f.filename, () => { picker.existing = picker.existing.filter((x) => x !== f); picker.render(); })),
+      ...picker.added.map((f) => chip(f.name, () => { picker.added = picker.added.filter((x) => x !== f); picker.render(); })));
+    webToggle.classList.toggle("hidden", picker.existing.length + picker.added.length === 0);
+  };
+  picker.set = (files) => { picker.existing = [...files]; picker.render(); };
+  picker.upload = async (onStatus) => {
+    for (const file of [...picker.added]) {
+      onStatus(`Reading ${file.name}…`);
+      const body = new FormData();
+      body.append("file", file);
+      const up = await api("/api/files", { method: "POST", body, headers: accessHeaders() });
+      picker.existing.push({ id: up.file_id, filename: up.filename }); // uploaded once, even if the run then fails to start
+      picker.added = picker.added.filter((x) => x !== file);
+    }
+    picker.render();
+    return picker.existing.map((f) => f.id);
+  };
+  document.getElementById(`${prefix}-attach`).addEventListener("click", () => input.click());
+  input.addEventListener("change", () => {
+    const skipped = [];
+    for (const f of input.files) {
+      if (!DOC_TYPES.some((ext) => f.name.toLowerCase().endsWith(ext))) skipped.push(f.name);
+      else if (!picker.added.some((x) => x.name === f.name && x.size === f.size)) picker.added.push(f);
+    }
+    input.value = "";
+    picker.render();
+    onSkipped(skipped.length ? `Skipped ${skipped.join(", ")}: only PDF, DOCX, TXT and MD files can be used.` : "");
+  });
+  return picker;
+}
+
+const followUpDocs = documentPicker("followup", (msg) => (msg ? setFollowUpStatus(msg, true) : followUpStatus.replaceChildren()));
+
 document.getElementById("followup-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const question = followUpBox.value.trim();
@@ -581,8 +628,10 @@ document.getElementById("followup-form").addEventListener("submit", async (e) =>
   button.disabled = true;
   setFollowUpStatus("Starting the follow-up…");
   try {
+    const fileIds = await followUpDocs.upload((t) => setFollowUpStatus(t));
+    setFollowUpStatus("Starting the follow-up…");
     const next = await api(`/api/runs/${runId}/followup`, { method: "POST", headers: accessHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ question }) });
+      body: JSON.stringify({ question, file_ids: fileIds, web_search: document.getElementById("followup-web").checked }) });
     window.location.href = `/runs/${next.run_id}`;
   } catch (err) {
     if (/access code/i.test(err.message)) { followUpAccess.classList.remove("hidden"); followUpAccess.focus(); }
@@ -594,7 +643,6 @@ followUpBox.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) document.getElementById("followup-form").requestSubmit();
 });
 
-api(`/api/runs/${runId}`).then(renderThread).catch(() => {});
 
 // ------------------------------------------------------------------ edit & run again (a new run; this one is kept)
 const editForm = document.getElementById("edit-run");
@@ -624,6 +672,8 @@ editForm.addEventListener("keydown", (e) => {
   if (e.key === "Escape") { e.preventDefault(); setEditOpen(false); }
   if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) editForm.requestSubmit();
 });
+const editDocs = documentPicker("edit", (msg) => setEditStatus(msg, Boolean(msg)));
+
 editForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const question = editBox.value.trim();
@@ -634,8 +684,10 @@ editForm.addEventListener("submit", async (e) => {
   button.disabled = true;
   setEditStatus("Starting the new run…");
   try {
+    const fileIds = await editDocs.upload((t) => setEditStatus(t));
+    setEditStatus("Starting the new run…");
     const next = await api(`/api/runs/${runId}/rerun`, { method: "POST", headers: accessHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ question, depth, web_search: document.getElementById("edit-web")?.checked }) });
+      body: JSON.stringify({ question, depth, file_ids: fileIds, web_search: document.getElementById("edit-web").checked }) });
     window.location.href = `/runs/${next.run_id}`;
   } catch (err) {
     if (/access code/i.test(err.message)) { editAccess.classList.remove("hidden"); editAccess.focus(); }
@@ -647,3 +699,10 @@ editForm.addEventListener("submit", async (e) => {
 if (root.dataset.status === "done") setStatus("done", "Loading report…");
 refreshTokens();
 listenForProgress(); // replays the stored trail, then follows live events until the run ends
+
+// The run's thread and documents (for the edit and follow-up forms).
+api(`/api/runs/${runId}`).then((run) => {
+  renderThread(run);
+  editDocs.set(run.files || []);
+  followUpDocs.set(run.files || []);
+}).catch(() => {});

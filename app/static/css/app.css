@@ -360,7 +360,7 @@ dialog.sheet[open] { animation: sheet-up .22s ease-out; }
 
 /* follow-up research: thread links in the header, the "continue" box under the report */
 .thread { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 10px; color: var(--muted); font-size: .88rem; }
-.thread a { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); max-width: 42ch; }
+.thread a { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); max-width: min(42ch, 100%); min-width: 0; }
 .thread a span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .thread a:hover { color: var(--ink); }
 .researched-as { margin-top: 8px; color: var(--muted); font-size: .9rem; }
@@ -376,7 +376,7 @@ dialog.sheet[open] { animation: sheet-up .22s ease-out; }
 .followup .suggestions:empty { display: none; }
 .composer-compact { margin-top: 14px; padding: 12px 14px; }
 .composer-compact textarea { font-size: 1rem; }
-.followup-list { margin-top: 8px; display: grid; gap: 6px; }
+.followup-list { margin-top: 8px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
 .followup-list:empty { display: none; }
 .followup-list a { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-sm); background: var(--surface); border: 1px solid var(--line); color: var(--ink); font-size: .92rem; }
 .followup-list a:hover { border-color: var(--lavender-ink); text-decoration: none; }
