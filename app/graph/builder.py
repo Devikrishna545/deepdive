@@ -26,7 +26,7 @@ def _prior(state: ResearchState) -> dict:
     """Shared with every research task: for follow-up runs, the earlier run's cited passages join the
     candidate pool; in document mode, research uses the attached documents only."""
     return {"prior_chunks": list(state.get("prior_chunks", {}).values()), "prior_sources": state.get("prior_sources", {}),
-            "doc_only": state.get("doc_only", False)}
+            "doc_only": state.get("doc_only", False), "doc_web": state.get("doc_web", False)}
 
 
 def fan_out(state: ResearchState) -> list[Send]:

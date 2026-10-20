@@ -76,3 +76,57 @@ def test_general_question_with_files_still_searches_the_web(fake_world, paper):
     kinds = {s.kind for s in state["sources"].values()}
     assert kinds == {"web", "file"}  # unchanged behaviour: web plus the documents
     assert "DOCUMENTS:" not in next(p for p in fake_world.prompts if "MAX_SUB_QUESTIONS" in p)
+
+
+def test_web_addon_searches_only_for_parts_the_document_leaves_thin(fake_world, paper, monkeypatch):
+    from app.config import get_settings
+    from tests.fakes import fake_search
+
+    searched = []
+    monkeypatch.setattr("app.agents.researcher.agent.web_search",
+                        lambda q, max_results=None: searched.append(q) or fake_search(q))
+    monkeypatch.setenv("MIN_SUPPORTED_CLAIMS", "50")  # every part counts as thin
+    get_settings.cache_clear()
+    q = "What are the computational optimizations done in this attached paper?"
+    repo.create_run("run_web", q, "quick", [paper], web_addon=True)
+    state = execute_run("run_web", q, "quick", [paper])
+
+    first_pass = [e for e in state["research_log"] if e["round"] == 0]
+    assert all(not e["urls_fetched"] for e in first_pass) and first_pass  # documents first: no web
+    assert searched and set(searched) <= {qq for e in state["research_log"] if e["round"] > 0 for qq in e["queries"]}
+    kinds = {s.kind for s in state["sources"].values()}
+    assert kinds == {"file", "web"}  # the web filled the thin parts; the document is still there
+    plan_event = next(e for e in repo.list_events("run_web") if e.node == "plan" and e.phase == "end")
+    assert "documents first" in plan_event.summary
+
+
+def test_web_addon_is_skipped_when_the_document_answers_everything(fake_world, paper, monkeypatch):
+    searched = []
+    monkeypatch.setattr("app.agents.researcher.agent.web_search", lambda q, max_results=None: searched.append(q) or [])
+    monkeypatch.setattr("app.graph.nodes.find_gaps", lambda *a, **k: [])  # every part well covered
+    q = "Summarize the attached paper"
+    repo.create_run("run_full", q, "quick", [paper], web_addon=True)
+    execute_run("run_full", q, "quick", [paper])
+    assert searched == []
+
+
+def test_web_search_choice_is_stored_and_carried_over(fake_world, paper, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from app import create_app
+    from app.services import run_service
+
+    monkeypatch.setattr(run_service, "execute_run", lambda *a, **k: None)
+    with TestClient(create_app()) as c:
+        body = {"question": "What does this attached paper propose?", "depth": "quick", "file_ids": [paper], "web_search": True}
+        rid = c.post("/api/runs", json=body).json()["run_id"]
+        assert c.get(f"/api/runs/{rid}").json()["web_search"] is True
+        no_files = c.post("/api/runs", json=body | {"file_ids": []}).json()["run_id"]
+        assert c.get(f"/api/runs/{no_files}").json()["web_search"] is False  # meaningless without documents
+        repo.update_run(rid, status="done", report_json="{}")
+        kept = c.post(f"/api/runs/{rid}/rerun", json={"question": "What does this attached paper propose exactly?"}).json()["run_id"]
+        assert repo.get_run(kept).web_addon is True  # edit & run again keeps the choice
+        off = c.post(f"/api/runs/{rid}/rerun", json={"question": "What does this attached paper propose exactly?", "web_search": False}).json()["run_id"]
+        assert repo.get_run(off).web_addon is False
+        follow = c.post(f"/api/runs/{rid}/followup", json={"question": "And who are the authors?"}).json()["run_id"]
+        assert repo.get_run(follow).web_addon is True  # follow-ups inherit it

@@ -26,6 +26,9 @@ class RunRequest(BaseModel):
     question: str = Field(min_length=10, max_length=500)
     depth: str = Field(default="standard", pattern="^(quick|standard)$")
     file_ids: list[str] = Field(default_factory=list)
+    # With documents attached and a question about them: also search the web for the parts the
+    # documents don't answer (documents first). Ignored otherwise.
+    web_search: bool = False
 
 
 class FollowUpRequest(BaseModel):
@@ -36,6 +39,7 @@ class FollowUpRequest(BaseModel):
 class RerunRequest(BaseModel):
     question: str = Field(min_length=10, max_length=500)
     depth: str = Field(default="standard", pattern="^(quick|standard)$")
+    web_search: bool | None = None  # None: keep the original run's choice
 
 
 class DeleteRequest(BaseModel):
@@ -54,13 +58,16 @@ def _run_summary(run) -> dict:
         "created_at": run.created_at,
         "finished_at": run.finished_at,
         "parent_run_id": run.parent_run_id,
+        "file_count": len(json.loads(run.file_ids_json or "[]")),
+        "web_search": run.web_addon,
     }
 
 
 @router.post("", status_code=202, dependencies=[Depends(require_access_code), Depends(require_daily_capacity)])
 def create_run(body: RunRequest) -> dict:
     try:
-        run_id = run_service.start_run(body.question.strip(), body.depth, body.file_ids)
+        run_id = run_service.start_run(body.question.strip(), body.depth, body.file_ids,
+                                       web_addon=body.web_search and bool(body.file_ids))
     except InsufficientBalance as exc:
         raise HTTPException(status_code=402, detail=str(exc)) from exc
     return {"run_id": run_id, "status": "queued"}
@@ -120,7 +127,8 @@ def rerun(run_id: str, body: RerunRequest) -> dict:
     parent = repo.get_run(old.parent_run_id) if old.parent_run_id else None
     try:
         new_id = run_service.start_run(body.question.strip(), body.depth, json.loads(old.file_ids_json or "[]"),
-                                       parent_run_id=parent.id if parent and parent.status == "done" else None)
+                                       parent_run_id=parent.id if parent and parent.status == "done" else None,
+                                       web_addon=old.web_addon if body.web_search is None else body.web_search)
     except InsufficientBalance as exc:
         raise HTTPException(status_code=402, detail=str(exc)) from exc
     return {"run_id": new_id, "status": "queued", "replaces": run_id}
@@ -236,7 +244,8 @@ def follow_up(run_id: str, body: FollowUpRequest) -> dict:
     _require_done(parent)
     try:
         new_id = run_service.start_run(body.question.strip(), body.depth or parent.depth,
-                                       json.loads(parent.file_ids_json or "[]"), parent_run_id=parent.id)
+                                       json.loads(parent.file_ids_json or "[]"), parent_run_id=parent.id,
+                                       web_addon=parent.web_addon)
     except InsufficientBalance as exc:
         raise HTTPException(status_code=402, detail=str(exc)) from exc
     return {"run_id": new_id, "status": "queued", "parent_run_id": parent.id}

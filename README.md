@@ -75,6 +75,13 @@ come from the document; and one document counts as enough sources for a section.
 says "answering from your documents only". A question that doesn't refer to the attachments
 ("what are the risks of the battery market?") still uses the web plus your documents.
 
+Want the web too? Tick **Also search the web** (shown once documents are attached). Your documents
+still come first: the first research pass reads only them, and only the parts they leave thin
+(fewer than two verified claims) get a second pass that also searches the web, with queries
+planned from the document's own title and wording, so the web results stay connected to it.
+Parts the documents answer never touch the web. Follow-ups and **Edit & run again** keep the
+choice (the editor has the same switch).
+
 ### Follow-up research in the same thread
 
 Every finished report ends with **Continue this research**: ask a follow-up ("and what about

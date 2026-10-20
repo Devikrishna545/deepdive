@@ -22,7 +22,7 @@ API surface (keep stable; the UI and the eval depend on it):
 | Method | Path | Purpose |
 | --- | --- | --- |
 | GET | `/api/health` | config sanity (incl. `access_code_required`, `max_runs_per_day`) (never values of keys) + Mesh balance level (ok/low/stop/unknown) |
-| POST | `/api/runs` | start a run `{question, depth, file_ids}` -> `{run_id}`; 402 below the balance floor; 401 without the `X-Access-Code` header when `RUN_ACCESS_CODE` is set; 429 past `MAX_RUNS_PER_DAY` |
+| POST | `/api/runs` | start a run `{question, depth, file_ids, web_search?}` -> `{run_id}` (`web_search`: documents first, web for the parts they leave thin; document mode only); 402 below the balance floor; 401 without the `X-Access-Code` header when `RUN_ACCESS_CODE` is set; 429 past `MAX_RUNS_PER_DAY` |
 | GET | `/api/runs` / `/api/runs/{id}` | list / one run |
 | GET | `/api/runs/{id}/events` | SSE audit-trail stream |
 | GET | `/api/runs/{id}/report` | report JSON (+ markdown) |

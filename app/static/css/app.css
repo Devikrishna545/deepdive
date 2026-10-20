@@ -422,3 +422,11 @@ dialog.sheet[open] { animation: sheet-up .22s ease-out; }
 .status-stopped { background: var(--surface-2); color: var(--muted); }
 .status-stopping { background: var(--lavender); color: var(--lavender-ink); }
 @media print { #stop-run { display: none !important; } }
+/* web add-on toggle (documents attached) */
+.web-toggle { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--muted); font-size: .9rem; cursor: pointer; }
+.web-toggle input { width: 16px; height: 16px; accent-color: var(--lavender-ink); cursor: pointer; }
+.web-toggle:has(input:checked) { background: var(--sky); color: var(--sky-ink); border-color: transparent; }
+.web-toggle:has(input:focus-visible) { outline: 2px solid var(--lavender-ink); outline-offset: 2px; }
+.edit-run .web-toggle { height: 34px; font-size: .86rem; }
+.web-hint { margin-top: 10px; color: var(--muted); font-size: .86rem; }

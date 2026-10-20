@@ -26,6 +26,7 @@ class Run(SQLModel, table=True):
     status: str = "queued"  # queued | running | stopping | done | failed | stopped
     error: str | None = None
     parent_run_id: str | None = None
+    web_addon: bool = False  # document mode: the web may fill parts the documents don't answer
     file_ids_json: str = "[]"
     tokens: int = 0
     cost_usd: float = 0.0

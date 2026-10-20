@@ -13,13 +13,15 @@ from app.db.session import session_scope
 # ---------------------------------------------------------------- runs
 
 
-def create_run(run_id: str, question: str, depth: str, file_ids: list[str], parent_run_id: str | None = None) -> Run:
+def create_run(run_id: str, question: str, depth: str, file_ids: list[str], parent_run_id: str | None = None,
+               web_addon: bool = False) -> Run:
     run = Run(
         id=run_id,
         question=question,
         depth=depth,
         file_ids_json=json.dumps(file_ids),
         parent_run_id=parent_run_id,
+        web_addon=web_addon,
     )
     with session_scope() as s:
         s.add(run)

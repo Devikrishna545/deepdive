@@ -133,10 +133,11 @@ class ResearcherAgent:
                 result.chunks.setdefault(c.id, c.model_copy(update={"sub_question_id": sq.id}))
 
     def _select_chunks(self, chunks: list[Chunk], topic: str, focus: str, limit: int,
-                       per_source: int = CHUNKS_PER_PAGE) -> dict[str, Chunk]:
-        """Hybrid ranking across pages (token control): best `limit` chunks, at most `per_source`
-        (CHUNKS_PER_PAGE) from one source so a single web page cannot fill the evidence. In document
-        mode the cap is lifted: a long document is the source, and its passages are the evidence."""
+                       file_cap: int = CHUNKS_PER_PAGE, file_sources: set[str] | None = None) -> dict[str, Chunk]:
+        """Hybrid ranking across pages (token control): best `limit` chunks, at most CHUNKS_PER_PAGE
+        from one web page so a single page cannot fill the evidence. Attached documents use
+        `file_cap`, lifted in document mode: a long document is the source the person asked about."""
+        file_sources = file_sources or set()
         scores = hybrid_scores([relevance(c.text, focus) for c in chunks], similarities(topic, [c.text for c in chunks]))
         ranked = [c for _, c in sorted(zip(scores, chunks, strict=False), key=lambda x: x[0], reverse=True)]
         picked: dict[str, Chunk] = {}
@@ -144,7 +145,7 @@ class ResearcherAgent:
         for c in ranked:
             if len(picked) >= limit:
                 break
-            if used.get(c.source_id, 0) >= per_source:
+            if used.get(c.source_id, 0) >= (file_cap if c.source_id in file_sources else CHUNKS_PER_PAGE):
                 continue
             used[c.source_id] = used.get(c.source_id, 0) + 1
             picked[c.id] = c
@@ -154,20 +155,24 @@ class ResearcherAgent:
     def research(
         self, question: str, sq: SubQuestion, queries: list[str], round_no: int, file_ids: list[str],
         prior_chunks: list[Chunk] | None = None, prior_sources: dict[str, Source] | None = None,
-        doc_only: bool = False,
+        doc_only: bool = False, search_web: bool | None = None,
     ) -> ResearchResult:
         s = get_settings()
         result = ResearchResult(queries=list(queries))
         topic = f"{question} {sq.text}"  # meaning: what the person asked, not the query wording
-        # Document mode: no web search (the web cannot know which document "this paper" is).
-        hits = [] if doc_only else self._collect_hits(queries, topic, result)
+        # Document mode: no web search (the web cannot know which document "this paper" is), except
+        # the web add-on's loop-back round, whose queries are planned from the document's own title.
+        search_web = (not doc_only) if search_web is None else search_web
+        hits = self._collect_hits(queries, topic, result) if search_web else []
         # keywords: rank passages against the main question too, not only the sub-question wording
         focus = f"{question} {sq.text} {' '.join(queries)}"
         parallel_map(lambda h: self._page_chunks(h, sq, result, focus), hits, workers=s.max_concurrency)
         self._document_chunks(sq, file_ids, result, queries, doc_only)
         self._prior_chunks(sq, prior_chunks or [], prior_sources or {}, result)
+        files = {sid for sid, src in result.sources.items() if src.kind == "file"}
         result.chunks = self._select_chunks(list(result.chunks.values()), topic, focus, s.chunks_per_subquestion,
-                                            per_source=s.chunks_per_subquestion if doc_only else CHUNKS_PER_PAGE)
+                                            file_cap=s.chunks_per_subquestion if doc_only else CHUNKS_PER_PAGE,
+                                            file_sources=files)
         prior_ids = {c.id for c in prior_chunks or []}
         result.reused = sum(cid in prior_ids for cid in result.chunks)
         if not result.chunks:

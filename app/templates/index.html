@@ -19,11 +19,13 @@
         <label title="3 sub-questions, about a minute"><input type="radio" name="depth" value="quick" checked>Quick</label>
         <label title="More sub-questions and sources, a few minutes"><input type="radio" name="depth" value="standard">Thorough</label>
       </fieldset>
+      <label class="web-toggle hidden" id="web-toggle"><input type="checkbox" id="web-search">{{ icon("globe", "icon-sm") }}<span>Also search the web</span></label>
       <span class="spacer"></span>
       <input id="access-code" class="access-input hidden" type="password" autocomplete="off" placeholder="Access code" aria-label="Access code for this demo">
       <button type="submit" id="submit" class="btn btn-primary btn-round" aria-label="Start research">{{ icon("arrow-up") }}</button>
     </div>
   </form>
+  <p id="web-hint" class="web-hint hidden" aria-live="polite"></p>
   <p id="form-status" class="form-status" role="status"></p>
 
   <div class="suggestions" aria-label="Example questions">

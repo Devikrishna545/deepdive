@@ -32,7 +32,8 @@ class ResearchState(TypedDict, total=False):
     context: str
     prior_chunks: dict[str, Chunk]
     prior_sources: dict[str, Source]
-    doc_only: bool  # document mode: answer from the attached documents only (app/core/doc_mode.py)
+    doc_only: bool  # document mode: answer from the attached documents (app/core/doc_mode.py)
+    doc_web: bool  # document mode with the web as an add-on for parts the documents leave thin
 
     # planning
     sub_questions: list[SubQuestion]
@@ -68,3 +69,4 @@ class ResearchTask(TypedDict):
     prior_chunks: list[Chunk]
     prior_sources: dict[str, Source]
     doc_only: bool
+    doc_web: bool

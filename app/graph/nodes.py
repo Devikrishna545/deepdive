@@ -90,7 +90,8 @@ def _plan_followup(state: ResearchState) -> dict:
         "_trail": {
             "summary": f"follow-up: planned {len(sub_questions)} sub-questions for \"{standalone[:90]}\"; "
             f"{reused} verified passage(s) from the earlier research can be reused"
-            + ("; answering from your documents only" if docs else ""),
+            + (("; documents first, web for the rest" if state.get("doc_web") else "; answering from your documents only")
+               if docs else ""),
             "payload": {"follow_up_of": state["question"], "researched_as": standalone,
                         "sub_questions": [sq.model_dump() for sq in sub_questions]},
         },
@@ -104,24 +105,34 @@ def _plan_documents(state: ResearchState) -> dict:
     sub_questions = planner.plan_documents(state["question"], state.get("depth", "standard"),
                                            documents.document_preview(file_ids))
     names = sorted(d.filename for d in documents.get_documents(file_ids).values())
+    mode = ("answering from your documents first; the web fills parts they don't answer" if state.get("doc_web")
+            else "answering from your documents only, no web search")
     return {
         "sub_questions": sub_questions,
         "loops": {sq.id: 0 for sq in sub_questions},
         "round": 0,
         "_trail": {
-            "summary": f"planned {len(sub_questions)} sub-questions; answering from your documents only "
-            f"({', '.join(names)}), no web search",
-            "payload": {"document_mode": True, "documents": names,
+            "summary": f"planned {len(sub_questions)} sub-questions from {', '.join(names)}; {mode}",
+            "payload": {"document_mode": True, "web_addon": bool(state.get("doc_web")), "documents": names,
                         "sub_questions": [sq.model_dump() for sq in sub_questions]},
         },
     }
 
 
 # ------------------------------------------------------------------ research (parallel)
+def _search_web(task: ResearchTask) -> bool:
+    """Web search is on, except in document mode. With the web add-on, document mode searches the
+    web only in the loop-back round, i.e. only for sub-questions the documents left thin."""
+    if not task.get("doc_only"):
+        return True
+    return bool(task.get("doc_web")) and task["round"] > 0
+
+
 def research(task: ResearchTask) -> dict:
     sq = task["sub_question"]
     result = researcher.research(task["question"], sq, task["queries"], task["round"], task.get("file_ids", []),
-                                 task.get("prior_chunks", []), task.get("prior_sources", {}), task.get("doc_only", False))
+                                 task.get("prior_chunks", []), task.get("prior_sources", {}), task.get("doc_only", False),
+                                 search_web=_search_web(task))
     log_entry = {
         "sub_question_id": sq.id,
         "round": task["round"],

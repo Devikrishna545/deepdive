@@ -89,6 +89,10 @@ def execute_run(run_id: str, question: str, depth: str, file_ids: list[str], par
         # Document mode when the question (or the question it follows up) points at the attachments.
         inputs["doc_only"] = is_document_question(question, file_ids) or (
             parent is not None and is_document_question(parent.question, file_ids))
+        run_row = repo.get_run(run_id)
+        # Documents first, web as an add-on: the first pass reads only the documents; sub-questions
+        # they leave thin get web search in the loop-back round.
+        inputs["doc_web"] = bool(inputs["doc_only"] and run_row is not None and run_row.web_addon)
         if parent is not None:
             inputs |= follow_up_inputs(parent)
         state = get_graph().invoke(
@@ -135,16 +139,18 @@ def stop_run(run_id: str) -> bool:
 
 
 def start_run(question: str, depth: str = "standard", file_ids: list[str] | None = None,
-              parent_run_id: str | None = None) -> str:
+              parent_run_id: str | None = None, web_addon: bool = False) -> str:
     """Create a run row and execute it on a background thread. Returns the run id.
-    With `parent_run_id` the run is a follow-up that continues that run's research.
+    With `parent_run_id` the run is a follow-up that continues that run's research. `web_addon`
+    (document mode only): answer from the documents first, then search the web for the parts they
+    don't answer.
 
     Raises InsufficientBalance (-> HTTP 402) when the Mesh balance is below MIN_BALANCE_STOP_USD.
     """
     require_balance()
     run_id = new_id("run")
     file_ids = file_ids or []
-    repo.create_run(run_id, question, depth, file_ids, parent_run_id)
+    repo.create_run(run_id, question, depth, file_ids, parent_run_id, web_addon)
 
     def _target() -> None:
         try:

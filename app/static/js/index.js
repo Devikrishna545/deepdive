@@ -30,10 +30,25 @@ question.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) form.requestSubmit();
 });
 
+// With documents attached: optional web add-on (documents first, web for parts they don't answer).
+const webToggle = document.getElementById("web-toggle");
+const webSearch = document.getElementById("web-search");
+const webHint = document.getElementById("web-hint");
+function updateWebToggle() {
+  const on = files.length > 0;
+  webToggle.classList.toggle("hidden", !on);
+  webHint.classList.toggle("hidden", !on);
+  webHint.textContent = webSearch.checked
+    ? "Questions about your documents are answered from them first; the web is searched only for parts they don't answer."
+    : "Questions about your documents are answered from them only. Turn on web search to fill in what they don't cover.";
+}
+webSearch.addEventListener("change", updateWebToggle);
+
 function renderChips() {
   chips.replaceChildren(...files.map((f, i) => el("span", { class: "file-chip" },
     icon("file-text", "icon-sm"), el("span", { title: f.name }, f.name),
     el("button", { type: "button", "aria-label": `Remove ${f.name}`, onclick: () => { files.splice(i, 1); renderChips(); } }, icon("x", "icon-sm")))));
+  updateWebToggle();
 }
 
 function addFiles(list) {
@@ -88,7 +103,7 @@ form.addEventListener("submit", async (event) => {
     const run = await api("/api/runs", {
       method: "POST",
       headers: accessHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ question: text, depth: depthValue, file_ids: fileIds }),
+      body: JSON.stringify({ question: text, depth: depthValue, file_ids: fileIds, web_search: webSearch.checked && fileIds.length > 0 }),
     });
     window.location.href = `/runs/${run.run_id}`;
   } catch (err) {

@@ -618,7 +618,7 @@ editForm.addEventListener("submit", async (e) => {
   setEditStatus("Starting the new run…");
   try {
     const next = await api(`/api/runs/${runId}/rerun`, { method: "POST", headers: accessHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ question, depth }) });
+      body: JSON.stringify({ question, depth, web_search: document.getElementById("edit-web")?.checked }) });
     window.location.href = `/runs/${next.run_id}`;
   } catch (err) {
     if (/access code/i.test(err.message)) { editAccess.classList.remove("hidden"); editAccess.focus(); }

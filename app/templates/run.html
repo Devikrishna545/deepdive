@@ -27,6 +27,7 @@
           <label title="3 sub-questions, about a minute"><input type="radio" name="edit-depth" value="quick"{% if run.depth == "quick" %} checked{% endif %}>Quick</label>
           <label title="More sub-questions and sources, a few minutes"><input type="radio" name="edit-depth" value="standard"{% if run.depth != "quick" %} checked{% endif %}>Thorough</label>
         </fieldset>
+        {% if run.file_ids_json and run.file_ids_json != "[]" %}<label class="web-toggle" title="For questions about your documents: answer from them first, search the web only for parts they don't answer"><input type="checkbox" id="edit-web"{% if run.web_addon %} checked{% endif %}>{{ icon("globe", "icon-sm") }}<span>Also search the web</span></label>{% endif %}
         <span class="spacer"></span>
         <input id="edit-access" class="access-input hidden" type="password" autocomplete="off" placeholder="Access code" aria-label="Access code for this demo">
         <button type="button" class="btn" id="edit-cancel">Cancel</button>
