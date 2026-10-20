@@ -296,6 +296,7 @@ thin evidence loops back instead of being padded; trust policy is a visible tabl
 
 ## Project layout
 
+
 ```
 app/            FastAPI app (Flask-style factory + routers), agents, graph, core logic, UI
 evaluation/     test sets, metrics, runner, committed results
