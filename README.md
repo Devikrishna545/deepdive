@@ -8,6 +8,8 @@ was kept, what was rejected, and why.
 Built for **Agent Arena 2026 · Track 01 (DeepDive)**. All LLM and embedding calls go through
 **[Mesh API](https://meshapi.ai)**.
 
+[Open the live demo](https://deepdive-742j.onrender.com).
+
 ![Report with the evidence panel: the verifier's quoted words are highlighted in the source passage](docs/screenshots/report-evidence.png)
 
 | Removed claims, with the verifier's reason | Phone, dark mode |
