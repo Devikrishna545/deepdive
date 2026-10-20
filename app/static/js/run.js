@@ -89,6 +89,7 @@ function onTrailEvent(ev) {
     setStatus("running", `${NODE_LABEL[node] || "Working"}…`);
   } else if (ev.phase === "end") {
     if (node === "plan" && ev.payload?.researched_as) showResearchedAs(ev.payload.researched_as);
+    if (node === "plan" && ev.payload?.document_mode) state.docMode = { web: Boolean(ev.payload.web_addon) };
     if (node !== "research") markStep(step, "done");
     if (ev.summary) setLiveNote(ev.summary);
   } else if (ev.phase === "error") {
@@ -483,12 +484,15 @@ function renderMeta() {
     return;
   }
   setStatus("done", "Report ready");
+  const mode = state.docMode && el("span", { class: "pill pill-sky",
+    title: state.docMode.web ? "Answered from your documents first, plus the web" : "Answered from your documents only; web search was off" },
+  icon(state.docMode.web ? "globe" : "file-text", "icon-sm"), state.docMode.web ? "Documents first + web" : "Documents only");
   document.getElementById("run-meta").append(
     el("span", { class: "pill pill-mint", title: "Claims that passed verification" }, icon("shield-check", "icon-sm"), `${kept} verified`),
     el("button", { type: "button", class: "pill pill-rose", title: "Show the claims the verifier removed",
       onclick: () => { showTab("claims"); setFilter("rejected"); } }, icon("eraser", "icon-sm"), `${removed} removed`),
     el("span", { class: "pill pill-sky", title: "Sources cited in the report" }, icon("globe", "icon-sm"), sourcesLabel(state.report.references.length)),
-    took);
+    mode, took);
 }
 
 async function loadResults() {

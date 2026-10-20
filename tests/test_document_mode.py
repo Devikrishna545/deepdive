@@ -78,36 +78,54 @@ def test_general_question_with_files_still_searches_the_web(fake_world, paper):
     assert "DOCUMENTS:" not in next(p for p in fake_world.prompts if "MAX_SUB_QUESTIONS" in p)
 
 
-def test_web_addon_searches_only_for_parts_the_document_leaves_thin(fake_world, paper, monkeypatch):
+def test_web_addon_reads_documents_first_and_the_web_too(fake_world, paper, monkeypatch):
+    from app.agents.researcher.agent import DOC_PRIORITY_SLOTS
     from app.config import get_settings
     from tests.fakes import fake_search
 
     searched = []
     monkeypatch.setattr("app.agents.researcher.agent.web_search",
                         lambda q, max_results=None: searched.append(q) or fake_search(q))
-    monkeypatch.setenv("MIN_SUPPORTED_CLAIMS", "50")  # every part counts as thin
-    get_settings.cache_clear()
     q = "What are the computational optimizations done in this attached paper?"
     repo.create_run("run_web", q, "quick", [paper], web_addon=True)
     state = execute_run("run_web", q, "quick", [paper])
 
     first_pass = [e for e in state["research_log"] if e["round"] == 0]
-    assert all(not e["urls_fetched"] for e in first_pass) and first_pass  # documents first: no web
-    assert searched and set(searched) <= {qq for e in state["research_log"] if e["round"] > 0 for qq in e["queries"]}
+    assert all(e["urls_fetched"] for e in first_pass)  # the web is read from the first pass on
+    assert searched
     kinds = {s.kind for s in state["sources"].values()}
-    assert kinds == {"file", "web"}  # the web filled the thin parts; the document is still there
+    assert kinds == {"file", "web"}
+    # documents first: per sub-question, the document fills its reserved slots before the web
+    from app.agents.researcher.agent import ResearcherAgent
+    from app.core.schemas import SubQuestion
+
+    sq = SubQuestion(id="sq_x", text="What optimizations reduce the computational complexity?",
+                     queries=["battery market size 2026", "battery supply risks"])
+    res = ResearcherAgent().research(q, sq, sq.queries, 0, [paper], doc_only=True, search_web=True)
+    docs = [c for c in res.chunks.values() if res.sources[c.source_id].kind == "file"]
+    web = [c for c in res.chunks.values() if res.sources[c.source_id].kind == "web"]
+    assert len(docs) == DOC_PRIORITY_SLOTS and web  # documents fill their reserved slots, the web the rest
+    assert len(docs) + len(web) <= get_settings().chunks_per_subquestion
+    # the writer is told which claims come from the document, and sees them first
+    synth_prompt = next(p for p in fake_world.prompts if "VERIFIED CLAIMS BY SUB-QUESTION" in p)
+    assert "(document)" in synth_prompt
     plan_event = next(e for e in repo.list_events("run_web") if e.node == "plan" and e.phase == "end")
-    assert "documents first" in plan_event.summary
+    assert "documents first, plus the web" in plan_event.summary
 
 
-def test_web_addon_is_skipped_when_the_document_answers_everything(fake_world, paper, monkeypatch):
+def test_follow_up_of_a_document_question_uses_both_when_the_add_on_is_on(fake_world, paper, monkeypatch):
+    from tests.fakes import fake_search
+
     searched = []
-    monkeypatch.setattr("app.agents.researcher.agent.web_search", lambda q, max_results=None: searched.append(q) or [])
-    monkeypatch.setattr("app.graph.nodes.find_gaps", lambda *a, **k: [])  # every part well covered
-    q = "Summarize the attached paper"
-    repo.create_run("run_full", q, "quick", [paper], web_addon=True)
-    execute_run("run_full", q, "quick", [paper])
-    assert searched == []
+    monkeypatch.setattr("app.agents.researcher.agent.web_search",
+                        lambda q, max_results=None: searched.append(q) or fake_search(q))
+    q = "What does this attached paper propose?"
+    repo.create_run("run_p", q, "quick", [paper], web_addon=True)
+    execute_run("run_p", q, "quick", [paper])
+    searched.clear()
+    repo.create_run("run_f", "And how did later work compare?", "quick", [paper], "run_p", web_addon=True)
+    state = execute_run("run_f", "And how did later work compare?", "quick", [paper], "run_p")
+    assert searched and {s.kind for s in state["sources"].values()} >= {"file", "web"}
 
 
 def test_web_search_choice_is_stored_and_carried_over(fake_world, paper, monkeypatch):

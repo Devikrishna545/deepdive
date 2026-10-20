@@ -14,7 +14,7 @@ import numpy as np
 from sqlalchemy import text as sa_text
 from sqlmodel import select
 
-from app.core.utils import new_id
+from app.core.utils import clean_document_text, new_id
 from app.db.models import DocChunk, Document
 from app.db.session import session_scope
 from app.llm.mesh_client import get_mesh
@@ -49,7 +49,8 @@ def ingest_document(path: Path, filename: str) -> Document:
         pages = _read_pages(path)
     except Exception as exc:  # corrupt or mislabelled file: tell the person, never a 500
         raise DocumentError(f"Could not read {filename}: the file looks damaged or is not a real {path.suffix.lstrip('.').upper()}.") from exc
-    pieces = [(page, text) for page, page_text in pages for text in split_text(page_text, min_chars=DOC_MIN_CHUNK_CHARS)]
+    pieces = [(page, text) for page, page_text in pages
+              for text in split_text(clean_document_text(page_text), min_chars=DOC_MIN_CHUNK_CHARS)]
     if not pieces:
         raise DocumentError(f"{filename} has no readable text. Scanned PDFs need a text layer (run OCR first).")
     vectors = get_mesh().embed([t for _, t in pieces]) if pieces else []
@@ -87,7 +88,7 @@ def document_preview(document_ids: list[str], chars: int = 700) -> str:
     docs = get_documents(document_ids)
     blocks = []
     for doc_id in document_ids:
-        head = " ".join(c.text for c in front_chunks([doc_id], 3))[:chars]
+        head = clean_document_text(" ".join(c.text for c in front_chunks([doc_id], 3)))[:chars]
         head = head.replace("<SOURCE", "&lt;SOURCE").replace("</SOURCE", "&lt;/SOURCE")
         name = docs[doc_id].filename if doc_id in docs else doc_id
         blocks.append(f"<SOURCE name={name}>\n{head}\n</SOURCE>")

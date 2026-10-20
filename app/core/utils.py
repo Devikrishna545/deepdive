@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextvars
 import hashlib
 import re
+import unicodedata
 import uuid
 from collections.abc import Callable, Iterable
 from concurrent.futures import ThreadPoolExecutor
@@ -16,6 +17,21 @@ B = TypeVar("B")
 
 _WS = re.compile(r"\s+")
 _QUOTES = str.maketrans({"‘": "'", "’": "'", "“": '"', "”": '"', "–": "-", "—": "-"})
+
+
+# PDF text is typeset: "ﬁ" ligatures, words hyphenated across line breaks ("repre-\nsentations"),
+# and a space left where a citation mark was removed ("proposed in , with").
+_HYPHEN_BREAK = re.compile(r"(?<![\w-])([A-Za-z]+)-[ \t]*\n[ \t]*([a-z]+)")
+_SPACE_BEFORE_PUNCT = re.compile(r"[ \t]+([,.;:)\]])")
+
+
+def clean_document_text(text: str) -> str:
+    """Undo PDF typesetting so text reads (and matches quotes) as written: ligatures to letters
+    (NFKC), words re-joined across hyphenated line breaks (a compound such as "state-of-the-\nart"
+    keeps its hyphen), no space before punctuation. Line breaks are otherwise kept."""
+    text = unicodedata.normalize("NFKC", text)
+    text = _HYPHEN_BREAK.sub(r"\1\2", text)
+    return _SPACE_BEFORE_PUNCT.sub(r"\1", text)
 
 
 def new_id(prefix: str) -> str:

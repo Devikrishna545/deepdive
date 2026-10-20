@@ -71,7 +71,8 @@ class SynthesizerAgent:
         for sq in sub_questions:
             mark = " (PREMISE CHECK)" if sq.checks_premise else ""
             lines.append(f"\n### {sq.id}{mark}: {sq.text}")
-            sq_claims = [c for c in kept if c.sub_question_id == sq.id]
+            # documents first (document mode): the person asked about their documents
+            sq_claims = sorted((c for c in kept if c.sub_question_id == sq.id), key=lambda c: tiers.get(c.id) != "document")
             lines += [f"[{c.id}] ({tiers.get(c.id, 'other')}) {c.text}" for c in sq_claims] or ["(no verified claims)"]
         disagreements = "\n".join(f"- {c.claim_a} vs {c.claim_b}: {c.explanation}" for c in contradictions) or "none"
         try:

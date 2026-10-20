@@ -90,9 +90,10 @@ def _plan_followup(state: ResearchState) -> dict:
         "_trail": {
             "summary": f"follow-up: planned {len(sub_questions)} sub-questions for \"{standalone[:90]}\"; "
             f"{reused} verified passage(s) from the earlier research can be reused"
-            + (("; documents first, web for the rest" if state.get("doc_web") else "; answering from your documents only")
+            + (("; your documents first, plus the web" if state.get("doc_web") else "; answering from your documents only")
                if docs else ""),
             "payload": {"follow_up_of": state["question"], "researched_as": standalone,
+                        **({"document_mode": True, "web_addon": bool(state.get("doc_web"))} if docs else {}),
                         "sub_questions": [sq.model_dump() for sq in sub_questions]},
         },
     }
@@ -105,7 +106,7 @@ def _plan_documents(state: ResearchState) -> dict:
     sub_questions = planner.plan_documents(state["question"], state.get("depth", "standard"),
                                            documents.document_preview(file_ids))
     names = sorted(d.filename for d in documents.get_documents(file_ids).values())
-    mode = ("answering from your documents first; the web fills parts they don't answer" if state.get("doc_web")
+    mode = ("reading your documents first, plus the web" if state.get("doc_web")
             else "answering from your documents only, no web search")
     return {
         "sub_questions": sub_questions,
@@ -121,11 +122,11 @@ def _plan_documents(state: ResearchState) -> dict:
 
 # ------------------------------------------------------------------ research (parallel)
 def _search_web(task: ResearchTask) -> bool:
-    """Web search is on, except in document mode. With the web add-on, document mode searches the
-    web only in the loop-back round, i.e. only for sub-questions the documents left thin."""
+    """Web search is on, except in document mode without the web add-on. With the add-on every round
+    reads both; the researcher reserves most passages for the documents (documents first)."""
     if not task.get("doc_only"):
         return True
-    return bool(task.get("doc_web")) and task["round"] > 0
+    return bool(task.get("doc_web"))
 
 
 def research(task: ResearchTask) -> dict:
@@ -327,6 +328,12 @@ def _claim_tiers(claims, chunks, sources) -> dict[str, str]:
 def synthesize(state: ResearchState) -> dict:
     kept = kept_claims(state.get("claims", []), state.get("verdicts", []))
     tiers = _claim_tiers(kept, state.get("chunks", {}), state.get("sources", {}))
+    if state.get("doc_only"):  # the writer sees which claims come from the person's documents, listed first
+        chunks, sources = state.get("chunks", {}), state.get("sources", {})
+        for c in kept:
+            if any(cid in chunks and getattr(sources.get(chunks[cid].source_id), "kind", "") == "file"
+                   for cid in c.cited_chunk_ids):
+                tiers[c.id] = "document"
     report = synthesizer.synthesize(
         state["question"], state["sub_questions"], kept, state.get("contradictions", []), _coverage(state), tiers,
         min_domains=_min_domains(state),

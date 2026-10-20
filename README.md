@@ -58,7 +58,9 @@ trail lists every skipped result. If embeddings are unavailable, ranking falls b
 
 1. **Isolated verifier on a different model family** from the drafter, so the system is not grading itself.
 2. **Quote guard in code:** the verifier must quote the source verbatim; if the quote isn't
-   literally in the cited chunk, the claim is downgraded to unsupported.
+   literally in the cited chunk, the claim is downgraded to unsupported. Only typesetting is
+   ignored (PDF ligatures such as "ﬁ", words hyphenated across lines, case and spacing); a list
+   quote such as an author line must have every name in the passage, in order.
 3. **Partial claims are narrowed** to what the source actually says and re-verified once.
 4. **Citation check in code:** any report sentence without a verified claim ID is deleted and logged.
 5. **Audit trail:** sub-questions, queries, URLs fetched and failed, every verdict with its reason,
@@ -75,12 +77,12 @@ come from the document; and one document counts as enough sources for a section.
 says "answering from your documents only". A question that doesn't refer to the attachments
 ("what are the risks of the battery market?") still uses the web plus your documents.
 
-Want the web too? Tick **Also search the web** (shown once documents are attached). Your documents
-still come first: the first research pass reads only them, and only the parts they leave thin
-(fewer than two verified claims) get a second pass that also searches the web, with queries
-planned from the document's own title and wording, so the web results stay connected to it.
-Parts the documents answer never touch the web. Follow-ups and **Edit & run again** keep the
-choice (the editor has the same switch).
+Want the web too? Tick **Also search the web** (shown once documents are attached). Every research
+step then reads both, documents first: of the passages read for each part of the question, up to 6
+are reserved for your documents and the web fills the rest; web queries name the document's title,
+so results stay connected to it; and the writer sees which verified claims come from your
+document, listed first, so the report leads with what the document says and adds what the web
+adds. Follow-ups and **Edit & run again** keep the choice (the editor has the same switch).
 
 ### Follow-up research in the same thread
 

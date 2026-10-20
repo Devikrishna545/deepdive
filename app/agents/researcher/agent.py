@@ -19,7 +19,7 @@ from app.agents.base import chunk_block, load_prompt
 from app.config import get_settings
 from app.core.schemas import Chunk, Finding, FindingsOut, Source, SubQuestion
 from app.core.scoring import quality_score
-from app.core.utils import domain_of, new_id, parallel_map, stable_id
+from app.core.utils import clean_document_text, domain_of, new_id, parallel_map, stable_id
 from app.llm.mesh_client import get_mesh
 from app.tools import documents
 from app.tools.chunker import relevance, split_text, top_chunks
@@ -32,6 +32,7 @@ log = logging.getLogger(__name__)
 CHUNKS_PER_PAGE = 3  # was 2: the first benchmark lost fetched facts at this cut
 DOC_CANDIDATES = 8  # document mode: passages retrieved from the attached documents per sub-question
 DOC_FRONT_CHUNKS = 2  # document mode: the title page (title, authors, year, venue, abstract) is always a candidate
+DOC_PRIORITY_SLOTS = 6  # documents + web: passages per sub-question reserved for the documents; the web fills the rest
 CANDIDATES_PER_PAGE = 8  # keyword pre-filter per page; the hybrid ranking then picks the best
 MAX_FINDINGS = 10
 
@@ -120,7 +121,9 @@ class ResearcherAgent:
                 quality_score=quality_score(name, None, kind="file"),
             )
             result.sources[source.id] = source
-            chunk = Chunk(id=stable_id("chk", row.id), source_id=source.id, sub_question_id=sq.id, text=row.text, page=row.page)
+            # PDF typesetting undone (ligatures, hyphenated line breaks), also for files indexed earlier
+            chunk = Chunk(id=stable_id("chk", row.id), source_id=source.id, sub_question_id=sq.id,
+                          text=clean_document_text(row.text), page=row.page)
             result.chunks[chunk.id] = chunk
 
     def _prior_chunks(self, sq: SubQuestion, prior: list[Chunk], prior_sources: dict[str, Source],
@@ -160,8 +163,8 @@ class ResearcherAgent:
         s = get_settings()
         result = ResearchResult(queries=list(queries))
         topic = f"{question} {sq.text}"  # meaning: what the person asked, not the query wording
-        # Document mode: no web search (the web cannot know which document "this paper" is), except
-        # the web add-on's loop-back round, whose queries are planned from the document's own title.
+        # Document mode: no web search (the web cannot know which document "this paper" is), unless the
+        # person turned on the web add-on; its queries are planned from the document's own title.
         search_web = (not doc_only) if search_web is None else search_web
         hits = self._collect_hits(queries, topic, result) if search_web else []
         # keywords: rank passages against the main question too, not only the sub-question wording
@@ -170,9 +173,19 @@ class ResearcherAgent:
         self._document_chunks(sq, file_ids, result, queries, doc_only)
         self._prior_chunks(sq, prior_chunks or [], prior_sources or {}, result)
         files = {sid for sid, src in result.sources.items() if src.kind == "file"}
-        result.chunks = self._select_chunks(list(result.chunks.values()), topic, focus, s.chunks_per_subquestion,
-                                            file_cap=s.chunks_per_subquestion if doc_only else CHUNKS_PER_PAGE,
-                                            file_sources=files)
+        if doc_only and search_web:
+            # Documents first: they get up to DOC_PRIORITY_SLOTS of the passages, the web fills the rest
+            # (and any slots the documents could not use).
+            pool = list(result.chunks.values())
+            from_docs = self._select_chunks([c for c in pool if c.source_id in files], topic, focus,
+                                            DOC_PRIORITY_SLOTS, file_cap=DOC_PRIORITY_SLOTS, file_sources=files)
+            from_web = self._select_chunks([c for c in pool if c.source_id not in files], topic, focus,
+                                           s.chunks_per_subquestion - len(from_docs))
+            result.chunks = from_docs | from_web
+        else:
+            result.chunks = self._select_chunks(list(result.chunks.values()), topic, focus, s.chunks_per_subquestion,
+                                                file_cap=s.chunks_per_subquestion if doc_only else CHUNKS_PER_PAGE,
+                                                file_sources=files)
         prior_ids = {c.id for c in prior_chunks or []}
         result.reused = sum(cid in prior_ids for cid in result.chunks)
         if not result.chunks:
