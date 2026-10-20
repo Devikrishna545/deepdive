@@ -49,6 +49,10 @@ class FakeMesh:
         self.prompts.append(user)
         # report plausible usage so token/cost accounting is exercised offline
         record_usage(model=model, prompt_tokens=(len(system) + len(user)) // 4, completion_tokens=40, latency_ms=1)
+        if schema is PlanOut and "EARLIER RESEARCH:" in user:  # follow-up: search finds nothing new
+            return PlanOut(sub_questions=[SubQuestionOut(text="What are the battery supply risks",
+                                                         queries=["battery supply outlook follow-up"])],
+                           standalone="What are the battery market supply risks in 2026?")
         if schema is PlanOut:
             return PlanOut(
                 sub_questions=[

@@ -27,6 +27,12 @@ class ResearchState(TypedDict, total=False):
     question: str
     depth: str
     file_ids: list[str]
+    # follow-up runs: the earlier research (questions + verified findings) for the planner, and the
+    # earlier run's cited passages, which compete with new search results in the researcher's ranking
+    context: str
+    prior_chunks: dict[str, Chunk]
+    prior_sources: dict[str, Source]
+    doc_only: bool  # document mode: answer from the attached documents only (app/core/doc_mode.py)
 
     # planning
     sub_questions: list[SubQuestion]
@@ -59,3 +65,6 @@ class ResearchTask(TypedDict):
     queries: list[str]
     round: int
     file_ids: list[str]
+    prior_chunks: list[Chunk]
+    prior_sources: dict[str, Source]
+    doc_only: bool

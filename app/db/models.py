@@ -23,7 +23,7 @@ class Run(SQLModel, table=True):
     id: str = Field(primary_key=True)
     question: str
     depth: str = "standard"
-    status: str = "queued"  # queued | running | done | failed
+    status: str = "queued"  # queued | running | stopping | done | failed | stopped
     error: str | None = None
     parent_run_id: str | None = None
     file_ids_json: str = "[]"

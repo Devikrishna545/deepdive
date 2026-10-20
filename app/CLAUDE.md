@@ -29,7 +29,11 @@ API surface (keep stable; the UI and the eval depend on it):
 | GET | `/api/runs/{id}/claims` | every claim + verdict + cited chunks + sources |
 | GET | `/api/runs/{id}/trail` | full audit trail + research log |
 | GET | `/api/runs/{id}/export?fmt=md\|html` | download / printable page |
-| POST | `/api/runs/{id}/followup` | bonus, returns 501 until built |
+| POST | `/api/runs/{id}/followup` | continue a finished run `{question, depth?}` -> `{run_id, parent_run_id}` (202; 409 if the run isn't done; same access/cap guards as `/api/runs`). `GET /api/runs/{id}` returns `parent_run_id`, `thread` and `followups` |
+| POST | `/api/runs/{id}/stop` | stop a queued/running run before its next step -> status `stopping`, then `stopped` (202; 409 if not in progress; access code when set) |
+| POST | `/api/runs/{id}/rerun` | edit & run again `{question, depth}` -> new `{run_id, replaces}` with the same files and thread (202; 409 while queued/running, allowed while stopping; access/cap guards) |
+| DELETE | `/api/runs/{id}` | delete one finished run with its events (409 while running; access code when set) |
+| POST | `/api/runs/delete` | delete several `{run_ids}` -> `{deleted, skipped}` (running runs are skipped; access code when set) |
 | POST | `/api/files` | upload PDF/DOCX/TXT for grounding; 422 for empty, scanned or damaged files; needs the access code when set |
 | GET | `/api/runs/{id}/usage` | DEV_MODE only: input/output tokens, calls, cost per agent and per step |
 | GET | `/dev/usage`, `/api/dev/usage` | DEV_MODE only: per-agent tokens across recent runs + average per run |

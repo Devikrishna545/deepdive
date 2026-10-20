@@ -5,10 +5,36 @@
 <div id="run-root" data-run-id="{{ run.id }}" data-status="{{ run.status }}" data-dev="{{ 'true' if settings().dev_mode else 'false' }}">
   <header class="run-head">
     <a href="/" class="back">{{ icon("chevron-left") }} All research</a>
+    <nav class="thread hidden" id="thread" aria-label="Earlier research this follows"></nav>
     <h1>{{ run.question }}</h1>
-    <div class="run-meta" id="run-meta">
-      <span class="pill pill-lavender" id="run-status">{{ icon("loader-circle", "icon-sm spin") }} Starting</span>
+    <p class="researched-as hidden" id="researched-as"></p>
+    <div class="meta-row">
+      <div class="run-meta" id="run-meta">
+        <span class="pill pill-lavender" id="run-status">{{ icon("loader-circle", "icon-sm spin") }} Starting</span>
+      </div>
+      {% set in_progress = run.status in ("queued", "running", "stopping") %}
+      <div class="run-actions" id="run-actions">
+        <button type="button" class="btn btn-sm btn-danger{% if not in_progress %} hidden{% endif %}" id="stop-run"{% if run.status == "stopping" %} disabled{% endif %}
+          title="Stop before the next step, then edit the question">{{ icon("circle-stop", "icon-sm") }}<span>{% if run.status == "stopping" %}Stopping…{% else %}Stop{% endif %}</span></button>
+        <button type="button" class="btn btn-sm hidden" id="edit-toggle" aria-expanded="false" aria-controls="edit-run">{{ icon("pen-line", "icon-sm") }}<span>Edit &amp; run again</span></button>
+      </div>
     </div>
+    <form id="edit-run" class="composer composer-compact edit-run hidden" novalidate>
+      <label for="edit-q" class="sr-only">Edited question</label>
+      <textarea id="edit-q" rows="2" minlength="10" maxlength="500">{{ run.question }}</textarea>
+      <div class="composer-bar">
+        <fieldset class="segmented" aria-label="Research depth">
+          <label title="3 sub-questions, about a minute"><input type="radio" name="edit-depth" value="quick"{% if run.depth == "quick" %} checked{% endif %}>Quick</label>
+          <label title="More sub-questions and sources, a few minutes"><input type="radio" name="edit-depth" value="standard"{% if run.depth != "quick" %} checked{% endif %}>Thorough</label>
+        </fieldset>
+        <span class="spacer"></span>
+        <input id="edit-access" class="access-input hidden" type="password" autocomplete="off" placeholder="Access code" aria-label="Access code for this demo">
+        <button type="button" class="btn" id="edit-cancel">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="edit-submit">{{ icon("repeat-2") }}<span>Run again</span></button>
+      </div>
+      <p class="edit-note">Starts a new run with the same documents{% if run.parent_run_id %} and the same earlier research{% endif %}. This one stays in your list.</p>
+    </form>
+    <p id="edit-status" class="form-status" role="status"></p>
   </header>
 
   <section class="progress" id="progress" aria-label="Research progress">
@@ -41,6 +67,23 @@
       <div id="panel-report" aria-labelledby="tab-report" class="tab-panel" role="tabpanel">
         <div id="report-waiting" class="skeleton" aria-label="The report appears here when the run finishes"><span></span><span></span><span></span><span></span><span></span><span></span></div>
         <article id="report" class="report hidden"></article>
+        <section id="followup" class="followup hidden" aria-labelledby="followup-title">
+          <h2 id="followup-title">{{ icon("message-square-plus") }} Continue this research</h2>
+          <p class="followup-help">Ask a follow-up or dig into a claim. DeepDive keeps this research as context, can reuse its verified sources, and checks every new claim again.</p>
+          <div id="followup-suggest" class="suggestions" aria-label="Suggested follow-ups"></div>
+          <form id="followup-form" class="composer composer-compact" novalidate>
+            <label for="followup-q" class="sr-only">Follow-up question</label>
+            <textarea id="followup-q" rows="2" minlength="5" maxlength="500" placeholder="What would you like to know next? For example: how does this compare with last year?"></textarea>
+            <div class="composer-bar">
+              <span class="spacer"></span>
+              <input id="followup-access" class="access-input hidden" type="password" autocomplete="off" placeholder="Access code" aria-label="Access code for this demo">
+              <button type="submit" class="btn btn-primary" id="followup-submit">{{ icon("search") }}<span>Research further</span></button>
+            </div>
+          </form>
+          <p id="followup-status" class="form-status" role="status"></p>
+          <div id="followup-list" class="followup-list"></div>
+        </section>
+        <div id="report-refs" class="report report-refs hidden"></div>
       </div>
       <div id="panel-claims" aria-labelledby="tab-claims" class="tab-panel hidden" role="tabpanel">
         <div class="segmented" role="group" aria-label="Filter claims">

@@ -53,3 +53,16 @@ Prompts: `prompt.md` (plan), `gap_prompt.md` (loop-back). Model: `MODEL_PLANNER`
 ## Test
 `tests/test_graph_offline.py` exercises plan and gap planning with `FakeMesh`. Add a case there
 for any change to how sub-questions or gap queries are produced.
+
+## Follow-up runs
+
+`plan_followup(question, depth, context)` adds `followup_prompt.md` to the system prompt and the
+earlier questions + verified findings to the user message, and returns `(plan, standalone_question)`.
+Follow-up plans are never cached (the context is part of the plan).
+
+## Document mode
+
+`plan_documents(question, depth, documents)` adds `documents_prompt.md` and the documents' opening
+text (`documents.document_preview`, framed as SOURCE blocks) to the call. No premise check, never
+cached. Used when `app/core/doc_mode.is_document_question` is true (files attached and the
+question refers to them); the researcher then skips web search.

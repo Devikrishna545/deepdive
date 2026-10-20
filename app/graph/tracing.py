@@ -4,7 +4,8 @@ A node may include a private `_trail` key in its returned update:
     {"_trail": {"summary": "one line for the UI", "payload": {...details...}}}
 `traced` removes it from the state update and stores it in the `events` table together
 with latency, tokens, USD cost and the models used. Errors are recorded and re-raised.
-The run stops (BudgetExceeded) once RUN_BUDGET_USD or RUN_TOKEN_BUDGET is crossed.
+The run stops (BudgetExceeded) once RUN_BUDGET_USD or RUN_TOKEN_BUDGET is crossed, and
+(RunStopped) before the next step once the person presses Stop.
 """
 
 from __future__ import annotations
@@ -21,6 +22,10 @@ from app.llm.usage import add_run_usage, start_collecting, stop_collecting
 log = logging.getLogger("deepdive.trace")
 
 
+class RunStopped(Exception):
+    """The person stopped the run; raised before the next step starts (no new model calls)."""
+
+
 def traced(node_name: str) -> Callable:
     def decorator(fn: Callable[[dict], dict]) -> Callable[[dict], dict]:
         @functools.wraps(fn)
@@ -29,6 +34,8 @@ def traced(node_name: str) -> Callable:
             label = node_name
             if node_name == "research" and state.get("sub_question") is not None:
                 label = f"research:{state['sub_question'].id}"
+            if repo.stop_requested(run_id):
+                raise RunStopped(f"stopped by the user before {node_name}")
             repo.add_event(run_id, label, "start", summary=f"{node_name} started")
             collector, token = start_collecting()
             started = time.perf_counter()

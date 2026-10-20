@@ -38,6 +38,66 @@ def list_runs(limit: int = 20) -> list[Run]:
         return list(s.exec(select(Run).order_by(col(Run.created_at).desc()).limit(limit)))
 
 
+def list_followups(run_id: str) -> list[Run]:
+    with session_scope() as s:
+        return list(s.exec(select(Run).where(Run.parent_run_id == run_id).order_by(Run.created_at)))
+
+
+ACTIVE_STATUSES = ("queued", "running", "stopping")
+FINAL_STATUSES = ("done", "failed", "stopped")
+
+
+def request_stop(run_id: str) -> bool:
+    """Ask a queued or running run to stop at its next step. False if it is not in progress."""
+    with session_scope() as s:
+        run = s.get(Run, run_id)
+        if run is None or run.status not in ("queued", "running"):
+            return False
+        run.status = "stopping"
+        s.add(run)
+        s.commit()
+        return True
+
+
+def stop_requested(run_id: str) -> bool:
+    run = get_run(run_id)
+    return run is not None and run.status == "stopping"
+
+
+def mark_running(run_id: str) -> bool:
+    """queued -> running, unless a stop was asked for before the run started. Returns False then."""
+    with session_scope() as s:
+        run = s.get(Run, run_id)
+        if run is None or run.status == "stopping":
+            return False
+        run.status = "running"
+        s.add(run)
+        s.commit()
+        return True
+
+
+def delete_runs(run_ids: list[str]) -> tuple[list[str], list[str]]:
+    """Delete finished runs and their audit trails. Runs still in progress are skipped (their
+    background thread is still writing to them). Returns (deleted ids, skipped ids). Follow-ups of
+    a deleted run are kept; their link to it simply ends. Cached search results and uploaded
+    documents are shared with other runs and stay."""
+    deleted, skipped = [], []
+    with session_scope() as s:
+        for run_id in dict.fromkeys(run_ids):
+            run = s.get(Run, run_id)
+            if run is None:
+                continue
+            if run.status in ACTIVE_STATUSES:
+                skipped.append(run_id)
+                continue
+            for ev in s.exec(select(Event).where(Event.run_id == run_id)):
+                s.delete(ev)
+            s.delete(run)
+            deleted.append(run_id)
+        s.commit()
+    return deleted, skipped
+
+
 def count_runs_since(since) -> int:
     with session_scope() as s:
         return len(list(s.exec(select(Run.id).where(Run.created_at >= since))))
@@ -59,7 +119,7 @@ def update_run(run_id: str, **fields: Any) -> None:
             return
         for key, value in fields.items():
             setattr(run, key, value)
-        if fields.get("status") in ("done", "failed"):
+        if fields.get("status") in FINAL_STATUSES:
             run.finished_at = utcnow()
         s.add(run)
         s.commit()

@@ -30,6 +30,8 @@ from app.tools.semantic import hybrid_scores, keep_on_topic, similarities
 log = logging.getLogger(__name__)
 
 CHUNKS_PER_PAGE = 3  # was 2: the first benchmark lost fetched facts at this cut
+DOC_CANDIDATES = 8  # document mode: passages retrieved from the attached documents per sub-question
+DOC_FRONT_CHUNKS = 2  # document mode: the title page (title, authors, year, venue, abstract) is always a candidate
 CANDIDATES_PER_PAGE = 8  # keyword pre-filter per page; the hybrid ranking then picks the best
 MAX_FINDINGS = 10
 
@@ -43,6 +45,7 @@ class ResearchResult:
     urls_fetched: list[str] = field(default_factory=list)
     urls_failed: list[str] = field(default_factory=list)
     urls_skipped: list[str] = field(default_factory=list)  # search results judged off-topic by meaning
+    reused: int = 0  # passages picked from the earlier research (follow-up runs)
 
 
 class ResearcherAgent:
@@ -95,11 +98,17 @@ class ResearcherAgent:
             chunk = Chunk(id=stable_id("chk", hit.url, piece[:200]), source_id=source.id, sub_question_id=sq.id, text=piece)
             result.chunks[chunk.id] = chunk
 
-    def _document_chunks(self, sq: SubQuestion, file_ids: list[str], result: ResearchResult) -> None:
+    def _document_chunks(self, sq: SubQuestion, file_ids: list[str], result: ResearchResult,
+                         queries: list[str] | None = None, doc_only: bool = False) -> None:
         if not file_ids:
             return
         docs = documents.get_documents(file_ids)
-        for row in documents.retrieve(file_ids, sq.text, k=4):
+        if doc_only:  # the documents are the only evidence: retrieve more, always include the title page
+            rows = documents.retrieve(file_ids, f"{sq.text} {' '.join(queries or [])}", k=DOC_CANDIDATES)
+            rows = documents.front_chunks(file_ids, DOC_FRONT_CHUNKS) + rows
+        else:
+            rows = documents.retrieve(file_ids, sq.text, k=4)
+        for row in rows:
             doc = docs.get(row.document_id)
             name = doc.filename if doc else row.document_id
             source = Source(
@@ -114,35 +123,53 @@ class ResearcherAgent:
             chunk = Chunk(id=stable_id("chk", row.id), source_id=source.id, sub_question_id=sq.id, text=row.text, page=row.page)
             result.chunks[chunk.id] = chunk
 
-    def _select_chunks(self, chunks: list[Chunk], topic: str, focus: str, limit: int) -> dict[str, Chunk]:
-        """Hybrid ranking across pages (token control): best `limit` chunks, at most
-        CHUNKS_PER_PAGE from one source so a single page cannot fill the evidence."""
+    def _prior_chunks(self, sq: SubQuestion, prior: list[Chunk], prior_sources: dict[str, Source],
+                      result: ResearchResult) -> None:
+        """Follow-up runs: passages the earlier report cited compete with new ones in the ranking.
+        No search or fetch cost; they are re-verified like any other evidence in this run."""
+        for c in prior:
+            if c.source_id in prior_sources:
+                result.sources[c.source_id] = prior_sources[c.source_id]
+                result.chunks.setdefault(c.id, c.model_copy(update={"sub_question_id": sq.id}))
+
+    def _select_chunks(self, chunks: list[Chunk], topic: str, focus: str, limit: int,
+                       per_source: int = CHUNKS_PER_PAGE) -> dict[str, Chunk]:
+        """Hybrid ranking across pages (token control): best `limit` chunks, at most `per_source`
+        (CHUNKS_PER_PAGE) from one source so a single web page cannot fill the evidence. In document
+        mode the cap is lifted: a long document is the source, and its passages are the evidence."""
         scores = hybrid_scores([relevance(c.text, focus) for c in chunks], similarities(topic, [c.text for c in chunks]))
         ranked = [c for _, c in sorted(zip(scores, chunks, strict=False), key=lambda x: x[0], reverse=True)]
         picked: dict[str, Chunk] = {}
-        per_source: dict[str, int] = {}
+        used: dict[str, int] = {}
         for c in ranked:
             if len(picked) >= limit:
                 break
-            if per_source.get(c.source_id, 0) >= CHUNKS_PER_PAGE:
+            if used.get(c.source_id, 0) >= per_source:
                 continue
-            per_source[c.source_id] = per_source.get(c.source_id, 0) + 1
+            used[c.source_id] = used.get(c.source_id, 0) + 1
             picked[c.id] = c
         return picked
 
     # ------------------------------------------------------------ main entry
     def research(
-        self, question: str, sq: SubQuestion, queries: list[str], round_no: int, file_ids: list[str]
+        self, question: str, sq: SubQuestion, queries: list[str], round_no: int, file_ids: list[str],
+        prior_chunks: list[Chunk] | None = None, prior_sources: dict[str, Source] | None = None,
+        doc_only: bool = False,
     ) -> ResearchResult:
         s = get_settings()
         result = ResearchResult(queries=list(queries))
         topic = f"{question} {sq.text}"  # meaning: what the person asked, not the query wording
-        hits = self._collect_hits(queries, topic, result)
+        # Document mode: no web search (the web cannot know which document "this paper" is).
+        hits = [] if doc_only else self._collect_hits(queries, topic, result)
         # keywords: rank passages against the main question too, not only the sub-question wording
         focus = f"{question} {sq.text} {' '.join(queries)}"
         parallel_map(lambda h: self._page_chunks(h, sq, result, focus), hits, workers=s.max_concurrency)
-        self._document_chunks(sq, file_ids, result)
-        result.chunks = self._select_chunks(list(result.chunks.values()), topic, focus, s.chunks_per_subquestion)
+        self._document_chunks(sq, file_ids, result, queries, doc_only)
+        self._prior_chunks(sq, prior_chunks or [], prior_sources or {}, result)
+        result.chunks = self._select_chunks(list(result.chunks.values()), topic, focus, s.chunks_per_subquestion,
+                                            per_source=s.chunks_per_subquestion if doc_only else CHUNKS_PER_PAGE)
+        prior_ids = {c.id for c in prior_chunks or []}
+        result.reused = sum(cid in prior_ids for cid in result.chunks)
         if not result.chunks:
             return result
 

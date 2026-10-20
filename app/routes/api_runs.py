@@ -30,6 +30,16 @@ class RunRequest(BaseModel):
 
 class FollowUpRequest(BaseModel):
     question: str = Field(min_length=5, max_length=500)
+    depth: str | None = Field(default=None, pattern="^(quick|standard)$")
+
+
+class RerunRequest(BaseModel):
+    question: str = Field(min_length=10, max_length=500)
+    depth: str = Field(default="standard", pattern="^(quick|standard)$")
+
+
+class DeleteRequest(BaseModel):
+    run_ids: list[str] = Field(min_length=1, max_length=200)
 
 
 def _run_summary(run) -> dict:
@@ -43,6 +53,7 @@ def _run_summary(run) -> dict:
         "cost_usd": run.cost_usd,
         "created_at": run.created_at,
         "finished_at": run.finished_at,
+        "parent_run_id": run.parent_run_id,
     }
 
 
@@ -55,6 +66,13 @@ def create_run(body: RunRequest) -> dict:
     return {"run_id": run_id, "status": "queued"}
 
 
+@router.post("/delete", dependencies=[Depends(require_access_code)])
+def delete_runs(body: DeleteRequest) -> dict:
+    """Delete several runs (the home page's "Delete selected"). Runs still in progress are skipped."""
+    deleted, skipped = repo.delete_runs(body.run_ids)
+    return {"deleted": deleted, "skipped": skipped}
+
+
 @router.get("")
 def list_runs(limit: int = Query(20, le=100)) -> list[dict]:
     return [_run_summary(r) for r in repo.list_runs(limit)]
@@ -62,7 +80,50 @@ def list_runs(limit: int = Query(20, le=100)) -> list[dict]:
 
 @router.get("/{run_id}")
 def get_run(run_id: str) -> dict:
-    return _run_summary(get_run_or_404(run_id))
+    """One run, plus the research thread it belongs to: the runs it follows from (oldest first)
+    and the follow-ups started from it."""
+    run = get_run_or_404(run_id)
+    return _run_summary(run) | {
+        "thread": [{"id": r.id, "question": r.question} for r in run_service.thread_of(run)],
+        "followups": [{"id": r.id, "question": r.question, "status": r.status} for r in repo.list_followups(run_id)],
+    }
+
+
+@router.delete("/{run_id}", dependencies=[Depends(require_access_code)])
+def delete_run(run_id: str) -> dict:
+    """Delete one finished run with its report, claims and audit trail."""
+    run = get_run_or_404(run_id)
+    if run.status in repo.ACTIVE_STATUSES:
+        raise HTTPException(status_code=409, detail="This research is still running; delete it once it finishes.")
+    deleted, _ = repo.delete_runs([run_id])
+    return {"deleted": deleted}
+
+
+@router.post("/{run_id}/stop", status_code=202, dependencies=[Depends(require_access_code)])
+def stop(run_id: str) -> dict:
+    """Stop a run in progress before its next step (calls already sent finish; no new ones start).
+    The run ends as "stopped" with its audit trail so far; edit & run again works right away."""
+    run = get_run_or_404(run_id)
+    if not run_service.stop_run(run_id):
+        raise HTTPException(status_code=409, detail=f"This research is {run.status}; only research in progress can be stopped.")
+    return {"run_id": run_id, "status": "stopping"}
+
+
+@router.post("/{run_id}/rerun", status_code=202,
+             dependencies=[Depends(require_access_code), Depends(require_daily_capacity)])
+def rerun(run_id: str, body: RerunRequest) -> dict:
+    """Edit and run again: a new run with the corrected question (and depth), the same uploaded
+    documents and, for a follow-up, the same earlier research. The original run is kept."""
+    old = get_run_or_404(run_id)
+    if old.status in ("queued", "running"):  # a stopping run may be edited: it ends at its next step
+        raise HTTPException(status_code=409, detail="This research is still running; edit it once it finishes.")
+    parent = repo.get_run(old.parent_run_id) if old.parent_run_id else None
+    try:
+        new_id = run_service.start_run(body.question.strip(), body.depth, json.loads(old.file_ids_json or "[]"),
+                                       parent_run_id=parent.id if parent and parent.status == "done" else None)
+    except InsufficientBalance as exc:
+        raise HTTPException(status_code=402, detail=str(exc)) from exc
+    return {"run_id": new_id, "status": "queued", "replaces": run_id}
 
 
 @router.get("/{run_id}/events")
@@ -77,7 +138,7 @@ async def stream_events(run_id: str, after: int = 0):
                 last = ev.id
                 yield {"event": "trail", "id": str(ev.id), "data": json.dumps(_event_dict(ev), default=str)}
             run = repo.get_run(run_id)
-            if run and run.status in ("done", "failed"):
+            if run and run.status in repo.FINAL_STATUSES:
                 yield {"event": "done", "data": json.dumps({"status": run.status, "error": run.error})}
                 return
             await asyncio.sleep(0.7)
@@ -165,8 +226,17 @@ def export_report(run_id: str, fmt: str = Query("md", pattern="^(md|html)$")):
     return HTMLResponse(to_html(markdown_text, run.question))
 
 
-@router.post("/{run_id}/followup", status_code=501)
+@router.post("/{run_id}/followup", status_code=202,
+             dependencies=[Depends(require_access_code), Depends(require_daily_capacity)])
 def follow_up(run_id: str, body: FollowUpRequest) -> dict:
-    """Bonus (FR-18): reuse this run's evidence store for a follow-up question. Not built yet."""
-    get_run_or_404(run_id)
-    return {"detail": "follow-up not implemented yet", "run_id": run_id, "question": body.question}
+    """Continue a finished run: a new run whose planner sees the earlier questions and verified
+    findings, and whose researcher can reuse the passages the earlier report cited. Every claim
+    is verified again; the follow-up is its own run with its own report and audit trail."""
+    parent = get_run_or_404(run_id)
+    _require_done(parent)
+    try:
+        new_id = run_service.start_run(body.question.strip(), body.depth or parent.depth,
+                                       json.loads(parent.file_ids_json or "[]"), parent_run_id=parent.id)
+    except InsufficientBalance as exc:
+        raise HTTPException(status_code=402, detail=str(exc)) from exc
+    return {"run_id": new_id, "status": "queued", "parent_run_id": parent.id}

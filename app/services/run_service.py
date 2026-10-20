@@ -7,9 +7,12 @@ import logging
 import threading
 
 from app.core.coverage import kept_claims
+from app.core.doc_mode import is_document_question
+from app.core.schemas import Chunk, Source
 from app.core.utils import new_id
 from app.db import repository as repo
 from app.graph.builder import RECURSION_LIMIT, get_graph
+from app.graph.tracing import RunStopped
 from app.llm.billing import balance_status, require_balance
 from app.llm.usage import run_usage
 
@@ -32,18 +35,69 @@ def snapshot(state: dict) -> dict:
     }
 
 
-def execute_run(run_id: str, question: str, depth: str, file_ids: list[str]) -> dict:
+# Follow-up context sent to the planner: enough to resolve "it"/"they" and to skip what is known,
+# small enough to keep the planner call cheap (~600 tokens).
+CONTEXT_CLAIMS = 12
+CONTEXT_CLAIM_CHARS = 220
+THREAD_QUESTIONS = 3
+
+
+def thread_of(run) -> list:
+    """The earlier runs this one follows from, oldest first (at most THREAD_QUESTIONS)."""
+    chain, seen = [], {run.id}
+    parent_id = run.parent_run_id
+    while parent_id and parent_id not in seen and len(chain) < THREAD_QUESTIONS:
+        parent = repo.get_run(parent_id)
+        if parent is None:
+            break
+        chain.append(parent)
+        seen.add(parent.id)
+        parent_id = parent.parent_run_id
+    return chain[::-1]
+
+
+def follow_up_inputs(parent) -> dict:
+    """What a follow-up run carries over from the run it continues: the questions so far and the
+    verified findings (planner context), plus the passages the earlier report cited, which the
+    researcher ranks alongside new results. Only kept claims are used: nothing removed by the
+    verifier can come back through a follow-up, and every claim is verified again in the new run."""
+    snap = json.loads(parent.snapshot_json or "{}")
+    kept = [c for c in snap.get("claims", []) if c.get("kept")]
+    chunks, sources = snap.get("chunks", {}), snap.get("sources", {})
+    cited = {cid for c in kept for cid in c.get("cited_chunk_ids", []) if cid in chunks}
+    prior_chunks = {cid: Chunk.model_validate(chunks[cid]) for cid in cited}
+    prior_sources = {c.source_id: Source.model_validate(sources[c.source_id])
+                     for c in prior_chunks.values() if c.source_id in sources}
+    earlier = [r.question for r in thread_of(parent)]
+    lines = [f"Earlier question: {q}" for q in earlier] + [f"Previous question: {parent.question}", "Verified findings:"]
+    lines += [f"- {c['text'][:CONTEXT_CLAIM_CHARS]}" for c in kept[:CONTEXT_CLAIMS]] or ["- (none)"]
+    return {"context": "\n".join(lines), "prior_chunks": prior_chunks, "prior_sources": prior_sources}
+
+
+def execute_run(run_id: str, question: str, depth: str, file_ids: list[str], parent_run_id: str | None = None) -> dict:
     """Run the graph synchronously (used by the background thread, CLI and evaluation)."""
-    repo.update_run(run_id, status="running")
+    if not repo.mark_running(run_id):  # stopped while it was still queued
+        _finish_stopped(run_id)
+        raise RunStopped("stopped by the user before it started")
     status = balance_status()
     if status.level in ("low", "unknown"):
         repo.add_event(run_id, "balance", "info", summary=status.message,
                        payload={"available_usd": status.available_usd, "level": status.level})
+    inputs = {"run_id": run_id, "question": question, "depth": depth, "file_ids": file_ids}
     try:
+        parent = repo.get_run(parent_run_id) if parent_run_id else None
+        # Document mode when the question (or the question it follows up) points at the attachments.
+        inputs["doc_only"] = is_document_question(question, file_ids) or (
+            parent is not None and is_document_question(parent.question, file_ids))
+        if parent is not None:
+            inputs |= follow_up_inputs(parent)
         state = get_graph().invoke(
-            {"run_id": run_id, "question": question, "depth": depth, "file_ids": file_ids},
+            inputs,
             config={"recursion_limit": RECURSION_LIMIT},
         )
+    except RunStopped:
+        _finish_stopped(run_id)
+        raise
     except Exception as exc:
         log.exception("run %s failed", run_id)
         repo.add_event(run_id, "run", "error", summary=f"{type(exc).__name__}: {exc}")
@@ -67,19 +121,34 @@ def execute_run(run_id: str, question: str, depth: str, file_ids: list[str]) -> 
     return state
 
 
-def start_run(question: str, depth: str = "standard", file_ids: list[str] | None = None) -> str:
+def _finish_stopped(run_id: str) -> None:
+    usage = run_usage(run_id)
+    repo.add_event(run_id, "run", "info", summary="stopped by you: no further steps were run "
+                   f"(spent {usage['tokens']} tokens, ${usage['cost_usd']:.4f})")
+    repo.update_run(run_id, status="stopped", tokens=usage["tokens"], cost_usd=round(usage["cost_usd"], 6))
+
+
+def stop_run(run_id: str) -> bool:
+    """Stop a queued or running run before its next step. Searches and fetched pages it already
+    made stay in the cache, so a corrected rerun reuses them where its queries overlap."""
+    return repo.request_stop(run_id)
+
+
+def start_run(question: str, depth: str = "standard", file_ids: list[str] | None = None,
+              parent_run_id: str | None = None) -> str:
     """Create a run row and execute it on a background thread. Returns the run id.
+    With `parent_run_id` the run is a follow-up that continues that run's research.
 
     Raises InsufficientBalance (-> HTTP 402) when the Mesh balance is below MIN_BALANCE_STOP_USD.
     """
     require_balance()
     run_id = new_id("run")
     file_ids = file_ids or []
-    repo.create_run(run_id, question, depth, file_ids)
+    repo.create_run(run_id, question, depth, file_ids, parent_run_id)
 
     def _target() -> None:
         try:
-            execute_run(run_id, question, depth, file_ids)
+            execute_run(run_id, question, depth, file_ids, parent_run_id)
         except Exception:
             pass  # already recorded on the run and in the trail
 

@@ -57,7 +57,8 @@ const liveNote = document.getElementById("live-note");
 
 function setStatus(kind, text) {
   const pill = document.getElementById("run-status");
-  const look = { running: ["pill-lavender", "loader-circle", "spin"], done: ["pill-mint", "circle-check", ""], failed: ["pill-rose", "circle-x", ""] }[kind];
+  const look = { running: ["pill-lavender", "loader-circle", "spin"], done: ["pill-mint", "circle-check", ""], failed: ["pill-rose", "circle-x", ""],
+    stopped: ["", "circle-stop", ""] }[kind];
   pill.className = `pill ${look[0]}`;
   pill.replaceChildren(icon(look[1], `icon-sm ${look[2]}`), text);
 }
@@ -87,6 +88,7 @@ function onTrailEvent(ev) {
     markStep(step, "active");
     setStatus("running", `${NODE_LABEL[node] || "Working"}…`);
   } else if (ev.phase === "end") {
+    if (node === "plan" && ev.payload?.researched_as) showResearchedAs(ev.payload.researched_as);
     if (node !== "research") markStep(step, "done");
     if (ev.summary) setLiveNote(ev.summary);
   } else if (ev.phase === "error") {
@@ -100,13 +102,17 @@ function listenForProgress() {
   source.addEventListener("done", (e) => {
     source.close();
     const info = JSON.parse(e.data);
-    pipeline.querySelectorAll(".step.active").forEach((x) => { x.classList.remove("active"); x.classList.add(info.status === "done" ? "done" : "failed"); });
-    if (info.status !== "done" && !pipeline.querySelector(".step.failed")) {
+    const ended = { done: "done", stopped: "stopped" }[info.status] || "failed";
+    pipeline.querySelectorAll(".step.active").forEach((x) => { x.classList.remove("active"); x.classList.add(ended); });
+    if (ended === "failed" && !pipeline.querySelector(".step.failed")) {
       pipeline.querySelector(".step:not(.done)")?.classList.add("failed"); // the step the run stopped at
     }
     document.getElementById("progress").classList.add("finished");
+    document.getElementById("stop-run").classList.add("hidden");
+    document.getElementById("edit-toggle").classList.remove("hidden"); // edit & run again, once finished
     refreshTokens();
     if (info.status === "done") loadResults();
+    else if (info.status === "stopped") showStopped();
     else showFailure(info.error);
   });
   source.onerror = () => { /* the browser reconnects automatically */ };
@@ -135,6 +141,43 @@ async function showFailure(error) {
   document.getElementById("report-waiting").replaceWith(card);
   document.getElementById("evidence").classList.add("hidden"); // nothing to cite on a failed run
   liveNote.replaceChildren();
+}
+
+// ------------------------------------------------------------------ stop (before the next step)
+let stoppedHere = false; // pressed Stop on this page: keep the editor open for the corrected question
+const stopBtn = document.getElementById("stop-run");
+
+function setStopButton(label, disabled) {
+  stopBtn.disabled = disabled;
+  stopBtn.querySelector("span").textContent = label;
+}
+
+stopBtn.addEventListener("click", async () => {
+  setStopButton("Stopping…", true);
+  try {
+    await api(`/api/runs/${runId}/stop`, { method: "POST", headers: accessHeaders() });
+    stoppedHere = true;
+    setLiveNote("Stopping after the current step… You can edit the question now.");
+    document.getElementById("edit-toggle").classList.remove("hidden");
+    setEditOpen(true);
+  } catch (err) {
+    setStopButton("Stop", false);
+    setLiveNote(`Could not stop: ${err.message}`);
+  }
+});
+
+function showStopped() {
+  setStatus("stopped", "Stopped");
+  const card = el("div", { class: "state-card" },
+    el("span", { class: "bubble pill-lavender" }, icon("circle-stop")),
+    el("div", {},
+      el("h2", {}, "You stopped this research"),
+      el("p", {}, "No further steps were run. Edit the question and run it again: pages this run already searched and read are cached, so the new run reuses them wherever the corrected question needs them."),
+      el("button", { class: "btn", type: "button", onclick: () => setEditOpen(true) }, icon("pen-line"), "Edit & run again")));
+  document.getElementById("report-waiting").replaceWith(card);
+  document.getElementById("evidence").classList.add("hidden"); // nothing to cite on a stopped run
+  liveNote.replaceChildren();
+  if (stoppedHere && editForm.classList.contains("hidden")) setEditOpen(true);
 }
 
 async function rerun(run) {
@@ -271,6 +314,10 @@ function evidenceContent(claim) {
   if (v.evidence_quote && !shown) {
     nodes.splice(3, 0, el("p", { class: "ev-quote" }, `“${v.evidence_quote}”`));
   }
+  if (claim.kept && state.report) {
+    nodes.push(el("div", { class: "ev-actions" },
+      el("button", { type: "button", class: "btn", onclick: () => askAbout(claim) }, icon("message-square-plus", "icon-sm"), "Research this further")));
+  }
   return nodes;
 }
 
@@ -338,9 +385,12 @@ function renderReport() {
       article.append(el("p", { class: "note note-limited" }, icon("triangle-alert", "icon-sm"),
         el("span", {}, "Limited evidence: fewer than two verified claims from two independent sources.")));
     }
+    const keptHere = state.claims?.claims.some((c) => c.kept && c.sub_question_id === section.sub_question_id);
     article.append(section.sentences.length
       ? el("p", {}, section.sentences.map(sentenceNode))
-      : el("p", { class: "empty-section" }, "No claim for this part passed verification."));
+      : el("p", { class: "empty-section" }, keptHere
+        ? "The verified claims for this part did not answer it directly, so none were written here. They are listed in the Claims tab."
+        : "No claim for this part passed verification."));
   }
   if (r.disagreements.length) {
     article.append(el("h2", {}, "Where sources disagree"),
@@ -350,7 +400,9 @@ function renderReport() {
   if (r.limitations.length) {
     article.append(el("h2", {}, "Limitations"), el("ul", { class: "plain" }, r.limitations.map((t) => el("li", {}, t))));
   }
-  article.append(el("h2", {}, "References"), el("ol", { class: "refs" }, r.references.map((ref) => {
+  // References sit after the "Continue this research" box, in their own block with the report's styling.
+  const refsBox = document.getElementById("report-refs");
+  refsBox.replaceChildren(el("h2", {}, "References"), el("ol", { class: "refs" }, r.references.map((ref) => {
     const href = safeUrl(ref.url);
     const src = { tier: state.tierBySource[ref.source_id] };
     return el("li", {},
@@ -361,6 +413,7 @@ function renderReport() {
   })));
   document.getElementById("report-waiting").classList.add("hidden");
   article.classList.remove("hidden");
+  refsBox.classList.remove("hidden");
 }
 
 // ------------------------------------------------------------------ claims
@@ -439,12 +492,140 @@ async function loadResults() {
     renderReport();
     renderClaims();
     renderMeta();
+    renderFollowUp();
     document.getElementById("export-md").classList.remove("hidden");
     document.getElementById("export-html").classList.remove("hidden");
   } catch (err) {
     showFailure(`Could not load the report: ${err.message}`);
   }
 }
+
+// ------------------------------------------------------------------ follow-up research (same thread)
+const followUpBox = document.getElementById("followup-q");
+const followUpStatus = document.getElementById("followup-status");
+const followUpAccess = document.getElementById("followup-access");
+
+function shorten(text, n) { return text.length > n ? `${text.slice(0, n - 1)}…` : text; }
+
+function renderThread(run) {
+  const nav = document.getElementById("thread");
+  if (!run?.thread?.length) return;
+  nav.replaceChildren(el("span", {}, "Follows"), ...run.thread.map((r) => el("a", { href: `/runs/${r.id}`, title: r.question },
+    icon("corner-down-right", "icon-sm"), el("span", {}, shorten(r.question, 70)))));
+  nav.classList.remove("hidden");
+}
+
+function showResearchedAs(question) {
+  const p = document.getElementById("researched-as");
+  if (!question || question.trim() === document.querySelector(".run-head h1").textContent.trim()) return;
+  p.replaceChildren("Researched as: ", el("strong", {}, question));
+  p.classList.remove("hidden");
+}
+
+// Suggested follow-ups: the parts of the question this report could only answer thinly.
+function followUpSuggestions() {
+  const kept = {};
+  for (const c of state.claims.claims) if (c.kept) kept[c.sub_question_id] = (kept[c.sub_question_id] || 0) + 1;
+  return state.claims.sub_questions.filter((sq) => (kept[sq.id] || 0) < 2).slice(0, 3)
+    .map((sq) => `Find more evidence: ${sq.text.replace(/\?$/, "")}?`);
+}
+
+function renderFollowUp() {
+  if (state.unverified) return; // evaluation comparison runs are not a starting point
+  document.getElementById("followup-suggest").replaceChildren(...followUpSuggestions().map((q) =>
+    el("button", { type: "button", class: "suggestion", onclick: () => { followUpBox.value = q; followUpBox.focus(); } }, q)));
+  document.getElementById("followup-list").replaceChildren(...(state.run?.followups || []).map((r) =>
+    el("a", { href: `/runs/${r.id}` }, el("span", { class: `status-icon status-${r.status}` },
+      icon({ done: "check", failed: "x", stopped: "circle-stop" }[r.status] || "loader-circle", `icon-sm${["running", "queued", "stopping"].includes(r.status) ? " spin" : ""}`)),
+      el("span", { class: "q" }, r.question), icon("corner-down-right", "icon-sm"))));
+  document.getElementById("followup").classList.remove("hidden");
+  api("/api/health").then((h) => { if (h.access_code_required && !getAccessCode()) followUpAccess.classList.remove("hidden"); }).catch(() => {});
+}
+
+function askAbout(claim) {
+  if (sheet.open) sheet.close();
+  showTab("report");
+  followUpBox.value = `Tell me more about this: ${claim.text}`;
+  document.getElementById("followup").scrollIntoView({ behavior: "smooth", block: "center" });
+  followUpBox.focus({ preventScroll: true });
+}
+
+function setFollowUpStatus(text, error = false) {
+  followUpStatus.className = `form-status${error ? " error" : ""}`;
+  followUpStatus.replaceChildren(error ? icon("circle-alert", "icon-sm") : icon("loader-circle", "icon-sm spin"), text);
+}
+
+document.getElementById("followup-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const question = followUpBox.value.trim();
+  if (question.length < 5) { setFollowUpStatus("Write a follow-up question first (at least a few words).", true); followUpBox.focus(); return; }
+  if (!followUpAccess.classList.contains("hidden") && followUpAccess.value.trim()) setAccessCode(followUpAccess.value.trim());
+  const button = document.getElementById("followup-submit");
+  button.disabled = true;
+  setFollowUpStatus("Starting the follow-up…");
+  try {
+    const next = await api(`/api/runs/${runId}/followup`, { method: "POST", headers: accessHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ question }) });
+    window.location.href = `/runs/${next.run_id}`;
+  } catch (err) {
+    if (/access code/i.test(err.message)) { followUpAccess.classList.remove("hidden"); followUpAccess.focus(); }
+    setFollowUpStatus(`Could not start the follow-up: ${err.message}`, true);
+    button.disabled = false;
+  }
+});
+followUpBox.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) document.getElementById("followup-form").requestSubmit();
+});
+
+api(`/api/runs/${runId}`).then(renderThread).catch(() => {});
+
+// ------------------------------------------------------------------ edit & run again (a new run; this one is kept)
+const editForm = document.getElementById("edit-run");
+const editToggle = document.getElementById("edit-toggle");
+const editBox = document.getElementById("edit-q");
+const editStatus = document.getElementById("edit-status");
+const editAccess = document.getElementById("edit-access");
+
+function setEditOpen(open) {
+  editForm.classList.toggle("hidden", !open);
+  editToggle.setAttribute("aria-expanded", String(open));
+  if (open) {
+    editBox.focus();
+    editBox.setSelectionRange(editBox.value.length, editBox.value.length);
+    api("/api/health").then((h) => { if (h.access_code_required && !getAccessCode()) editAccess.classList.remove("hidden"); }).catch(() => {});
+  } else {
+    editToggle.focus();
+  }
+}
+function setEditStatus(text, error = false) {
+  editStatus.className = `form-status${error ? " error" : ""}`;
+  editStatus.replaceChildren(text ? icon(error ? "circle-alert" : "loader-circle", error ? "icon-sm" : "icon-sm spin") : "", text);
+}
+editToggle.addEventListener("click", () => setEditOpen(editForm.classList.contains("hidden")));
+document.getElementById("edit-cancel").addEventListener("click", () => { setEditStatus(""); setEditOpen(false); });
+editForm.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") { e.preventDefault(); setEditOpen(false); }
+  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) editForm.requestSubmit();
+});
+editForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const question = editBox.value.trim();
+  if (question.length < 10) { setEditStatus("Write a question of at least 10 characters.", true); editBox.focus(); return; }
+  if (!editAccess.classList.contains("hidden") && editAccess.value.trim()) setAccessCode(editAccess.value.trim());
+  const depth = editForm.querySelector("input[name=edit-depth]:checked").value;
+  const button = document.getElementById("edit-submit");
+  button.disabled = true;
+  setEditStatus("Starting the new run…");
+  try {
+    const next = await api(`/api/runs/${runId}/rerun`, { method: "POST", headers: accessHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ question, depth }) });
+    window.location.href = `/runs/${next.run_id}`;
+  } catch (err) {
+    if (/access code/i.test(err.message)) { editAccess.classList.remove("hidden"); editAccess.focus(); }
+    setEditStatus(`Could not start again: ${err.message}`, true);
+    button.disabled = false;
+  }
+});
 
 if (root.dataset.status === "done") setStatus("done", "Loading report…");
 refreshTokens();

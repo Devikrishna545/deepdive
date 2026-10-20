@@ -140,6 +140,7 @@ class PlanOut(BaseModel):
     sub_questions: list[SubQuestionOut] = Field(min_length=1, max_length=8)
     premise: str = ""  # an assumption in the question that may be false; "" if none
     premise_queries: list[str] = Field(default_factory=list, max_length=3)
+    standalone: str = ""  # follow-ups only: the question rewritten to stand on its own
 
 
 class GapQueriesOut(BaseModel):

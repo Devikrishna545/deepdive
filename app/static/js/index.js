@@ -99,3 +99,98 @@ form.addEventListener("submit", async (event) => {
 });
 
 autosize();
+
+// ------------------------------------------------------------------ manage the list: delete one, select several
+const runList = document.getElementById("run-list");
+if (runList) {
+  const listStatus = document.getElementById("list-status");
+  const selectToggle = document.getElementById("select-toggle");
+  const selectBar = document.getElementById("select-bar");
+  const selectAll = document.getElementById("select-all");
+  const selectCount = document.getElementById("select-count");
+  const deleteSelected = document.getElementById("delete-selected");
+  const dialog = document.getElementById("confirm-delete");
+  let pendingDelete = null; // ids waiting for the confirm dialog
+
+  const checks = () => [...runList.querySelectorAll(".run-check")];
+  const enabledChecks = () => checks().filter((c) => !c.disabled);
+  const selectedIds = () => checks().filter((c) => c.checked).map((c) => c.value);
+
+  function setListStatus(text, error = false) {
+    listStatus.className = `form-status${error ? " error" : ""}`;
+    listStatus.replaceChildren(text ? icon(error ? "circle-alert" : "check", "icon-sm") : "", text);
+  }
+
+  function updateSelection() {
+    const n = selectedIds().length;
+    const total = enabledChecks().length;
+    selectCount.textContent = `${n} selected`;
+    deleteSelected.disabled = n === 0;
+    selectAll.checked = total > 0 && n === total;
+    selectAll.indeterminate = n > 0 && n < total;
+  }
+
+  function setSelecting(on) {
+    runList.classList.toggle("selecting", on);
+    selectBar.classList.toggle("hidden", !on);
+    runList.querySelectorAll(".row-check").forEach((l) => l.classList.toggle("hidden", !on));
+    selectToggle.setAttribute("aria-pressed", String(on));
+    selectToggle.querySelector("span").textContent = on ? "Done" : "Select";
+    if (!on) checks().forEach((c) => { c.checked = false; });
+    updateSelection();
+  }
+
+  selectToggle.addEventListener("click", () => setSelecting(selectToggle.getAttribute("aria-pressed") !== "true"));
+  selectAll.addEventListener("change", () => { enabledChecks().forEach((c) => { c.checked = selectAll.checked; }); updateSelection(); });
+  runList.addEventListener("change", (e) => { if (e.target.classList.contains("run-check")) updateSelection(); });
+
+  function askToDelete(ids) {
+    pendingDelete = ids;
+    const one = ids.length === 1;
+    const q = one ? runList.querySelector(`[data-run-id="${CSS.escape(ids[0])}"] .q`)?.textContent.trim() : "";
+    document.getElementById("confirm-title").textContent = one ? "Delete this research?" : `Delete ${ids.length} research runs?`;
+    document.getElementById("confirm-text").textContent = (one && q ? `“${q}” will be removed with its report, claims and audit trail.`
+      : "Their reports, claims and audit trails are removed.") + " This can’t be undone.";
+    dialog.showModal();
+    document.getElementById("confirm-cancel").focus();
+  }
+
+  runList.addEventListener("click", (e) => {
+    const btn = e.target.closest(".row-delete");
+    if (btn && !btn.disabled) askToDelete([btn.closest(".run-row").dataset.runId]);
+  });
+  deleteSelected.addEventListener("click", () => { const ids = selectedIds(); if (ids.length) askToDelete(ids); });
+  document.getElementById("confirm-cancel").addEventListener("click", () => dialog.close());
+  dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); }); // click outside closes
+  dialog.addEventListener("close", () => { pendingDelete = null; });
+
+  document.getElementById("confirm-ok").addEventListener("click", async () => {
+    const ids = pendingDelete || [];
+    dialog.close();
+    if (!ids.length) return;
+    if (!accessInput.classList.contains("hidden") && accessInput.value.trim()) setAccessCode(accessInput.value.trim());
+    const rows = ids.map((id) => runList.querySelector(`[data-run-id="${CSS.escape(id)}"]`)).filter(Boolean);
+    rows.forEach((r) => r.classList.add("removing"));
+    try {
+      const result = ids.length === 1
+        ? await api(`/api/runs/${encodeURIComponent(ids[0])}`, { method: "DELETE", headers: accessHeaders() })
+        : await api("/api/runs/delete", { method: "POST", headers: accessHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({ run_ids: ids }) });
+      const gone = new Set(result.deleted);
+      rows.forEach((r) => (gone.has(r.dataset.runId) ? r.remove() : r.classList.remove("removing")));
+      const skipped = (result.skipped || []).length;
+      setListStatus(`Deleted ${gone.size} research run${gone.size === 1 ? "" : "s"}`
+        + (skipped ? `; ${skipped} still running and kept.` : "."));
+      if (!runList.children.length) {
+        runList.remove(); selectBar.remove(); selectToggle.remove();
+        document.getElementById("list-empty").classList.remove("hidden");
+      } else if (selectToggle.getAttribute("aria-pressed") === "true") {
+        updateSelection();
+      }
+    } catch (err) {
+      rows.forEach((r) => r.classList.remove("removing"));
+      if (/access code/i.test(err.message)) { showAccessField(); accessInput.focus(); }
+      setListStatus(`Could not delete: ${err.message}`, true);
+    }
+  });
+}

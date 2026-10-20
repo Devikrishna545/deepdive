@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 
 import numpy as np
+from sqlalchemy import text as sa_text
 from sqlmodel import select
 
 from app.core.utils import new_id
@@ -67,6 +68,30 @@ def get_documents(document_ids: list[str]) -> dict[str, Document]:
     with session_scope() as s:
         docs = s.exec(select(Document).where(Document.id.in_(document_ids)))
         return {d.id: d for d in docs}
+
+
+def front_chunks(document_ids: list[str], n: int = 2) -> list[DocChunk]:
+    """The first `n` chunks of each document, in reading order: title, authors, abstract. Meaning
+    search rarely ranks the title page for "who wrote it / when / where was it published"."""
+    out: list[DocChunk] = []
+    with session_scope() as s:
+        for doc_id in document_ids:
+            stmt = select(DocChunk).where(DocChunk.document_id == doc_id).order_by(sa_text("rowid")).limit(n)
+            out += list(s.exec(stmt))
+    return out
+
+
+def document_preview(document_ids: list[str], chars: int = 700) -> str:
+    """Each document's name and opening text, for the planner in document mode (untrusted text,
+    framed as a SOURCE block like web text)."""
+    docs = get_documents(document_ids)
+    blocks = []
+    for doc_id in document_ids:
+        head = " ".join(c.text for c in front_chunks([doc_id], 3))[:chars]
+        head = head.replace("<SOURCE", "&lt;SOURCE").replace("</SOURCE", "&lt;/SOURCE")
+        name = docs[doc_id].filename if doc_id in docs else doc_id
+        blocks.append(f"<SOURCE name={name}>\n{head}\n</SOURCE>")
+    return "\n".join(blocks)
 
 
 def retrieve(document_ids: list[str], query: str, k: int = 4) -> list[DocChunk]:

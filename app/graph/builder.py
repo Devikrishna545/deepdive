@@ -22,6 +22,13 @@ from app.graph.tracing import traced
 RECURSION_LIMIT = 60
 
 
+def _prior(state: ResearchState) -> dict:
+    """Shared with every research task: for follow-up runs, the earlier run's cited passages join the
+    candidate pool; in document mode, research uses the attached documents only."""
+    return {"prior_chunks": list(state.get("prior_chunks", {}).values()), "prior_sources": state.get("prior_sources", {}),
+            "doc_only": state.get("doc_only", False)}
+
+
 def fan_out(state: ResearchState) -> list[Send]:
     """One parallel `research` task per sub-question (first pass)."""
     return [
@@ -34,6 +41,7 @@ def fan_out(state: ResearchState) -> list[Send]:
                 "queries": sq.queries,
                 "round": 0,
                 "file_ids": state.get("file_ids", []),
+                **_prior(state),
             },
         )
         for sq in state["sub_questions"]
@@ -53,6 +61,7 @@ def fan_out_gaps(state: ResearchState) -> list[Send] | str:
                 "queries": gap_queries[sq.id],
                 "round": state.get("round", 1),
                 "file_ids": state.get("file_ids", []),
+                **_prior(state),
             },
         )
         for sq in state["sub_questions"]

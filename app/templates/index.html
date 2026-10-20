@@ -33,25 +33,46 @@
   </div>
 
   <section class="recent" aria-labelledby="recent-title">
-    <h2 class="section-title" id="recent-title">{{ icon("history") }} Recent research</h2>
+    <div class="recent-head">
+      <h2 class="section-title" id="recent-title">{{ icon("history") }} Recent research</h2>
+      {% if runs %}<button type="button" class="btn btn-sm" id="select-toggle" aria-pressed="false">{{ icon("list-checks", "icon-sm") }}<span>Select</span></button>{% endif %}
+    </div>
     {% if runs %}
-    <ul class="run-list">
+    <div class="select-bar hidden" id="select-bar" role="toolbar" aria-label="Selected research">
+      <label class="check"><input type="checkbox" id="select-all"> Select all</label>
+      <span class="spacer"></span>
+      <span id="select-count" class="select-count" aria-live="polite">0 selected</span>
+      <button type="button" class="btn btn-sm btn-danger" id="delete-selected" disabled>{{ icon("trash-2", "icon-sm") }}<span>Delete selected</span></button>
+    </div>
+    <ul class="run-list" id="run-list">
       {% for r in runs %}
-      <li>
+      {% set active = r.status in ("queued", "running", "stopping") %}
+      <li class="run-row" data-run-id="{{ r.id }}">
+        <label class="row-check hidden"><input type="checkbox" class="run-check" value="{{ r.id }}" aria-label="Select: {{ r.question }}"{% if active %} disabled{% endif %}></label>
         <a href="/runs/{{ r.id }}" class="run-link">
           <span class="status-icon status-{{ r.status }}" title="{{ r.status }}">
-            {% if r.status == "done" %}{{ icon("check", "icon-sm") }}{% elif r.status == "failed" %}{{ icon("x", "icon-sm") }}{% else %}{{ icon("loader-circle", "icon-sm spin") }}{% endif %}
+            {% if r.status == "done" %}{{ icon("check", "icon-sm") }}{% elif r.status == "failed" %}{{ icon("x", "icon-sm") }}{% elif r.status == "stopped" %}{{ icon("circle-stop", "icon-sm") }}{% else %}{{ icon("loader-circle", "icon-sm spin") }}{% endif %}
           </span>
-          <span class="q">{{ r.question }}</span>
+          <span class="q">{% if r.parent_run_id %}<span class="followup-mark" title="Follow-up to earlier research">{{ icon("corner-down-right", "icon-sm") }}<span class="sr-only">Follow-up:</span></span>{% endif %}{{ r.question }}</span>
           <time datetime="{{ (r.created_at.isoformat() ~ ('' if r.created_at.tzinfo else 'Z')) if r.created_at else '' }}" data-relative>{{ r.created_at.strftime("%d %b") if r.created_at else "" }}</time>
         </a>
+        <button type="button" class="iconbtn row-delete" aria-label="Delete: {{ r.question }}" title="{{ 'Can’t delete while it is running' if active else 'Delete this research' }}"{% if active %} disabled{% endif %}>{{ icon("trash-2", "icon-sm") }}</button>
       </li>
       {% endfor %}
     </ul>
-    {% else %}
-    <div class="run-list empty">Your reports will appear here. Ask your first question above.</div>
+    <p id="list-status" class="form-status" role="status"></p>
     {% endif %}
+    <div class="run-list empty{% if runs %} hidden{% endif %}" id="list-empty">Your reports will appear here. Ask your first question above.</div>
   </section>
+
+  <dialog id="confirm-delete" class="confirm" aria-labelledby="confirm-title" aria-describedby="confirm-text">
+    <h2 id="confirm-title">Delete research?</h2>
+    <p id="confirm-text"></p>
+    <div class="confirm-actions">
+      <button type="button" class="btn" id="confirm-cancel">Cancel</button>
+      <button type="button" class="btn btn-danger" id="confirm-ok">{{ icon("trash-2", "icon-sm") }}<span>Delete</span></button>
+    </div>
+  </dialog>
 </section>
 {% endblock %}
 {% block scripts %}<script src="{{ url_for('static', path='js/index.js') }}"></script>{% endblock %}

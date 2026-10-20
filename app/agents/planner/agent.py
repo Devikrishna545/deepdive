@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from app.agents.base import load_prompt
+from app.agents.base import INJECTION_GUARD, load_prompt
 from app.config import get_settings
 from app.core.schemas import GapQueriesOut, PlanOut, SubQuestion
 from app.core.utils import new_id, stable_id
@@ -36,26 +36,50 @@ class PlannerAgent:
                          depth, date.today().strftime("%Y-%m"))
 
     def plan(self, question: str, depth: str = "standard") -> list[SubQuestion]:
+        return self._plan(question, depth)[0]
+
+    def plan_followup(self, question: str, depth: str, context: str, documents: str = "") -> tuple[list[SubQuestion], str]:
+        """Follow-up question: plan with the earlier research as context. Returns the plan and the
+        question rewritten to stand on its own ("what about India?" -> a full question)."""
+        plan, standalone = self._plan(question, depth, context, documents)
+        return plan, standalone or question
+
+    def plan_documents(self, question: str, depth: str, documents: str) -> list[SubQuestion]:
+        """Document mode: plan from the attached documents' opening text (no premise check: the
+        documents are the ground truth here, and the web cannot tell which document "this" is)."""
+        return self._plan(question, depth, documents=documents)[0]
+
+    def _plan(self, question: str, depth: str, context: str = "", documents: str = "") -> tuple[list[SubQuestion], str]:
         s = get_settings()
         limit = 3 if depth == "quick" else s.max_subquestions
+        base = load_prompt(self.name).removesuffix(INJECTION_GUARD).rstrip()
+        extras = [load_prompt(self.name, f).removesuffix(INJECTION_GUARD).rstrip()
+                  for f, on in (("followup_prompt.md", context), ("documents_prompt.md", documents)) if on]
+        system = "\n\n".join([base, *extras, INJECTION_GUARD])
+        user = f"TODAY: {date.today().isoformat()}\nQUESTION: {question}\nMAX_SUB_QUESTIONS: {limit}"
+        if documents:
+            user = f"DOCUMENTS:\n{documents}\n\n{user}"
+        if context:
+            user = f"EARLIER RESEARCH:\n{context}\n\n{user}"
         # An invalid or empty plan (PlanOut needs >= 1 sub-question) goes to the fallback model.
         out = get_mesh().chat_json(
             model=s.model_planner,
             fallback_model=s.model_planner_fallback,
-            system=load_prompt(self.name),
-            user=f"TODAY: {date.today().isoformat()}\nQUESTION: {question}\nMAX_SUB_QUESTIONS: {limit}",
+            system=system,
+            user=user,
             schema=PlanOut,
             temperature=0.0,
             max_tokens=PLAN_MAX_TOKENS,
             reasoning_effort=s.planner_reasoning_effort,
         )
+        standalone = " ".join(out.standalone.split())[:500] if context else ""
         plan = [
             SubQuestion(id=new_id("sq"), text=sq.text.strip(), queries=sq.queries[:3], rationale=sq.rationale)
             for sq in out.sub_questions
         ]
-        premise = out.premise.strip().rstrip(".?")
+        premise = "" if documents else out.premise.strip().rstrip(".?")
         if not premise:
-            return plan[:limit]
+            return plan[:limit], standalone
         # Code, not the model, guarantees the premise is researched first and kept within the limit.
         check = SubQuestion(
             id=new_id("sq"),
@@ -64,7 +88,7 @@ class PlannerAgent:
             rationale="checks an assumption in the question",
             checks_premise=True,
         )
-        return [check] + plan[: limit - 1]
+        return [check] + plan[: limit - 1], standalone
 
     def gap_queries(self, question: str, sub_question: SubQuestion, reasons: list[str]) -> list[str]:
         s = get_settings()

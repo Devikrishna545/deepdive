@@ -61,6 +61,7 @@ class SynthesizerAgent:
         contradictions: list[Contradiction],
         coverage: dict[str, Coverage],
         tiers: dict[str, str] | None = None,
+        min_domains: int | None = None,
     ) -> Report:
         """`tiers`: claim id -> source tier ("official", "academic", "news", "other"), shown to the
         model as `[clm_x|official]` so it can prefer official sources when claims conflict."""
@@ -92,7 +93,7 @@ class SynthesizerAgent:
         for sq in sub_questions:  # keep plan order; add empty sections the model skipped
             sec = by_id.get(sq.id)
             cov = coverage.get(sq.id)
-            limited = cov is None or not cov.passes(s.min_supported_claims, s.min_distinct_domains)
+            limited = cov is None or not cov.passes(s.min_supported_claims, min_domains or s.min_distinct_domains)
             sections.append(
                 ReportSection(
                     sub_question_id=sq.id,

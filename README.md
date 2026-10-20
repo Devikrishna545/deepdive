@@ -64,6 +64,32 @@ trail lists every skipped result. If embeddings are unavailable, ranking falls b
 5. **Audit trail:** sub-questions, queries, URLs fetched and failed, every verdict with its reason,
    loop-backs, removed sentences, tokens and latency per step.
 
+### Questions about your own documents
+
+Attach a paper, report or notes and ask about **it** ("what optimizations does this paper make?",
+"summarize the attached report") and DeepDive switches to **document mode**: it answers from your
+documents only. The planner sees each document's opening text (so it plans with the real title,
+not "the paper"); there is no web search and no premise check; the title page is always among the
+passages read, so title, authors, year and venue can be answered; more passages per sub-question
+come from the document; and one document counts as enough sources for a section. The audit trail
+says "answering from your documents only". A question that doesn't refer to the attachments
+("what are the risks of the battery market?") still uses the web plus your documents.
+
+### Follow-up research in the same thread
+
+Every finished report ends with **Continue this research**: ask a follow-up ("and what about
+India?"), or press **Research this further** on any verified claim. The follow-up is a new run
+linked to the earlier one (shown as "Follows …" on the page):
+
+- the planner sees the earlier questions and their verified findings, rewrites the follow-up as a
+  self-contained question ("Researched as: …") and plans only what is still open;
+- the passages the earlier report cited join the researcher's ranking next to new search results,
+  so known evidence costs no search or fetch;
+- nothing is trusted because it was trusted before: only kept claims are carried over, and every
+  claim in the follow-up is verified again. The audit trail shows how many passages were reused.
+
+API: `POST /api/runs/{id}/followup {"question": "..."}`.
+
 ### Built for a small credit balance
 
 - Balance read from Mesh (`GET /v1/balance`) before every run: a banner below **$5**, new runs refused below **$1**.
@@ -94,6 +120,16 @@ python run.py                                            # http://127.0.0.1:8000
 - Web UI (works on phone, tablet and desktop, light and dark, installable as an app): ask a question,
   watch the pipeline, read the report, click any citation mark to see
   the exact passage, open the **Claims** tab to see what was removed, and the **Audit trail** tab.
+- Fix a question: **Edit & run again** (on a finished run) opens the question and depth for editing
+  and starts a corrected run with the same documents and, for a follow-up, the same earlier
+  research. The original run is kept.
+- Spotted a mistake mid-run? **Stop** ends the run before its next step (calls already sent
+  finish; no new ones start) and opens the question editor at once. The stopped run keeps its
+  audit trail so far. Every search and page it read is already cached, so the corrected run reuses
+  them wherever its own plan needs them; drafts and verdicts are made fresh for the new question.
+- Tidy the list: each row on the home page has a delete button; **Select** adds checkboxes with
+  **Select all** and **Delete selected**. Deleting asks for confirmation, removes the run's report,
+  claims and audit trail, and skips runs that are still in progress.
 - Terminal: `python -m scripts.cli "your question"`
 - API docs: http://127.0.0.1:8000/docs
 - No key yet? `python -m scripts.offline_demo` creates a demo run from fake data so you can see the UI.
