@@ -198,6 +198,12 @@ headers (CSP, no framing, `nosniff`, HSTS behind HTTPS) and shows a 404 page for
 Free hosting on Hugging Face Spaces (Docker) takes one script and three secrets: see
 [docs/DEPLOY.md](docs/DEPLOY.md).
 
+**Free-hosting limitation:** free plans (Render, Hugging Face) use a temporary disk, so the research
+list, old report links and attached documents disappear when the service restarts or wakes from
+sleep; a report finished in the current session works fully (export it to keep it). On a paid
+plan, mount a persistent disk and set `DATABASE_URL` and `UPLOAD_DIR` to it, and history is kept.
+Details in [docs/DEPLOY.md](docs/DEPLOY.md#known-limitation-on-free-hosting-research-history-does-not-persist).
+
 ## Self-evaluation
 
 We measure two things separately: whether the verifier catches bad citations (labelled pairs

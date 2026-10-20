@@ -1,28 +1,54 @@
-# Deploying DeepDive
+# Deploying DeepDive (free tier)
 
-DeepDive is a FastAPI app served in a Docker container. Hugging Face's current Spaces
-requirements say Docker and Gradio Spaces need a paid plan to create: PRO for personal accounts,
-or Team/Enterprise for organizations. CPU Basic has no hourly hardware charge, but that does not
-remove the plan requirement. Static Spaces are free, but cannot host this server-side app as-is.
+Recommended: **Hugging Face Spaces, Docker SDK, free CPU** (2 vCPU, 16 GB RAM). It gives a stable
+public URL, keeps secrets in the Space settings, and runs the same `Dockerfile` as any other host.
 
-When eligible, Hugging Face Spaces with the Docker SDK provides a public URL, Space-managed
-secrets, and runs the same `Dockerfile` as other container hosts. CPU Basic provides 2 vCPU and
-16 GB RAM. Its disk is not persistent, so local SQLite run history can be lost on restart.
+| | Hugging Face Spaces (free) | Render (free) |
+| --- | --- | --- |
+| RAM | 16 GB | 512 MB |
+| Sleeps after | 48 h without visits (wakes in ~1 min) | 15 min (slow first load) |
+| Disk | resets on restart (run history is lost) | resets on restart |
+| Secrets | Space settings | dashboard env vars |
 
-If you do not want a Hugging Face paid plan, use another container host; see [Other hosts](#other-hosts)
-and check the provider's current pricing and storage behavior.
+Both free tiers lose the SQLite file on restart: judges see their own runs, not a history.
 
-## 1. Publish the Space
+## Known limitation on free hosting: research history does not persist
+
+DeepDive keeps everything in files under `data/`: the SQLite database (runs, claims, audit trail,
+follow-up threads) and the uploaded documents. Free plans give the container a **temporary disk**.
+It is wiped whenever the service restarts, redeploys, or wakes from sleep (Render free sleeps after
+15 minutes without visits). What a visitor sees:
+
+- The "Recent research" list on the home page is empty again after a restart.
+- An old report link (`/runs/<id>`) shows the "not found" page.
+- A run that was in progress when the service restarted is lost.
+- Documents attached to earlier runs are gone, so Edit & run again and Continue this research
+  cannot reuse them (attach them again).
+- Reports finished in the current session work normally, including citations, the Claims tab,
+  the audit trail, follow-ups and export. Save a report you want to keep with the Export button.
+
+The app does not need changing to fix this. On a paid plan, attach a persistent disk and point
+the two paths at it. Render: a paid instance type (Starter or above) plus a disk mounted at
+`/var/data` (Disks, add disk), then set these environment variables:
+
+| Variable | Value |
+| --- | --- |
+| `DATABASE_URL` | `sqlite:////var/data/deepdive.db` (four slashes: an absolute path) |
+| `UPLOAD_DIR` | `/var/data/uploads` |
+
+History, threads and attached documents then survive restarts and redeploys. A disk is tied to a
+single instance, so keep one instance (SQLite is not meant for several). Check current prices on
+the host's pricing page. For a large public deployment, move `DATABASE_URL` to a managed
+Postgres database instead; the code uses SQLModel, but only SQLite has been tested.
+
+## 1. Publish the Space (about 5 minutes)
 
 ```bash
 pip install huggingface_hub
 export HF_TOKEN=hf_...                  # huggingface.co/settings/tokens, "Write" access
-python scripts/deploy_hf_space.py --space OWNER/deepdive --dry-run   # see what goes up
-python scripts/deploy_hf_space.py --space OWNER/deepdive
+python scripts/deploy_hf_space.py --space <your-hf-username>/deepdive --dry-run   # see what goes up
+python scripts/deploy_hf_space.py --space <your-hf-username>/deepdive
 ```
-
-Replace `OWNER` with your Hugging Face username or organization name; do not include angle
-brackets. For a personal account, make sure its PRO plan is active before creating the Space.
 
 The script uploads only files tracked by git (never `.env` or `data/`), uses
 `deploy/huggingface/README.md` as the Space card, and sets these Space **variables**:
