@@ -30,7 +30,7 @@ question.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) form.requestSubmit();
 });
 
-// With documents attached: optional web add-on (documents first, web for parts they don't answer).
+// With documents attached: optional web add-on (documents first, plus the web).
 const webToggle = document.getElementById("web-toggle");
 const webSearch = document.getElementById("web-search");
 const webHint = document.getElementById("web-hint");
@@ -39,7 +39,7 @@ function updateWebToggle() {
   webToggle.classList.toggle("hidden", !on);
   webHint.classList.toggle("hidden", !on);
   webHint.textContent = webSearch.checked
-    ? "Questions about your documents are answered from them first; the web is searched only for parts they don't answer."
+    ? "Questions about your documents are answered from them first, plus what the web adds."
     : "Questions about your documents are answered from them only. Turn on web search to fill in what they don't cover.";
 }
 webSearch.addEventListener("change", updateWebToggle);

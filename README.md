@@ -17,6 +17,45 @@ Built for **Agent Arena 2026 · Track 01 (DeepDive)**. All LLM and embedding cal
 _Screenshots are real runs: "Transformers are the breakthrough to the new artificial intelligence" and
 the false-premise benchmark question "Why did the EU ban the sale of new petrol cars in 2024?"._
 
+## One full run, step by step
+
+A real run from start to finish: a question about an attached research paper (word2vec,
+"Efficient Estimation of Word Representations in Vector Space"), with **Also search the web** on.
+
+**1. Ask.** Type the question, attach the paper, choose Quick or Thorough, and optionally let the
+web add to it. Your documents are always read first.
+
+![Step 1: question, attached paper and the web add-on](docs/screenshots/workflow-1-ask.png)
+
+**2. Watch it work.** Plan, Research, Draft, Verify, Compare, Write: each step shows what it did
+("drafted 22 atomic claims"), and **Stop** ends the run before its next step if you spot a mistake.
+
+![Step 2: live progress while the verifier checks each claim](docs/screenshots/workflow-2-progress.png)
+
+**3. Read the report and check any sentence.** Click a citation number and the evidence panel opens
+the exact passage, with the words the verifier quoted highlighted, the verdict and the source
+(here "Your document", page 1). The chips show 22 claims verified, 1 removed, and the mode.
+
+![Step 3: report with the evidence panel and the highlighted quote](docs/screenshots/workflow-3-report-evidence.png)
+
+**4. See what was removed, and why.** The Claims tab lists every claim; "Removed" shows the ones
+the verifier rejected or narrowed, with its reason: here the page gives the dataset size and
+vector dimensionality but never names DistBelief, so the claim was removed and a narrowed version
+(dataset size and dimensionality only) was verified and kept.
+
+![Step 4: a removed claim with the verifier's reason and the source passage](docs/screenshots/workflow-4-removed-claims.png)
+
+**5. Audit every decision.** The Audit trail shows each step with its model, time and details: here
+the plan, made from the paper's own title, with "reading your documents first, plus the web".
+
+![Step 5: the audit trail with the planner's sub-questions](docs/screenshots/workflow-5-audit-trail.png)
+
+**6. Keep going.** Continue this research asks a follow-up that keeps this run as context and
+reuses its verified passages; documents can be added or removed and the web switched on or off.
+Every new claim is verified again. (Edit & run again, at the top, fixes the original question.)
+
+![Step 6: a follow-up question with the paper and the web](docs/screenshots/workflow-6-continue.png)
+
 ## How the agents cooperate
 
 ```mermaid
