@@ -260,6 +260,32 @@ _Last run: 20261019T183845Z. Raw numbers: `evaluation/results/eval_20261019T1838
 
 <!-- EVAL:END -->
 
+## Implementation risks, bugs, and future work
+
+### Risks we encountered
+
+- **Unreliable web search:** DuckDuckGo can rate-limit requests or return no results. DeepDive now stops before drafting when no evidence is found; Tavily is recommended for more reliable live demos, and `python -m scripts.check_search` checks search before a run.
+- **Model output variability:** Models can return malformed or truncated JSON, or produce inconsistent research plans. Schema validation, bounded retries, planner fallbacks, and a code-built report from verified claims reduce the impact. Model calls can still fail, so runs remain subject to the configured cost and balance limits.
+- **Evidence versus coverage:** Exact quote and citation checks protect trust, but text extraction and page limits once caused valid facts to be missed or rejected. Markdown is cleaned before chunking and more evidence is ranked per question; the quote guard remains strict rather than accepting fuzzy matches.
+- **Source reliability:** A verifier can confirm that a passage supports a claim, but that alone does not prove the source is authoritative or current. Source tiers, contradiction checks, and official-source comparisons help surface conflicts; readers should still inspect the cited evidence.
+- **Hosting persistence:** Free hosting plans may use temporary storage. Runs and uploaded documents can disappear after a restart; persistent storage is needed when research history must survive restarts.
+
+### Bugs found and fixed
+
+- **Malformed or cut-off model replies could interrupt report writing.** Output is validated, truncation gets a bounded retry, and a failed writing step can fall back to a report built from verified claims.
+- **Markdown links in fetched pages could make a real quote fail the exact-match guard.** Page text is cleaned before chunking, while the guard still requires the evidence to match the visible source text.
+- **Citation IDs with source-tier text could be mistaken for invalid IDs, causing supported report sentences to be removed.** Claim IDs are now parsed separately, and the final citation check still requires each ID to refer to a verified claim.
+- **Research plans sometimes introduced unsupported dates or assumed a false premise, and retrieval limits could omit relevant figures.** Planner constraints, premise checks, improved evidence ranking, and a small code-based recovery for corroborated figures address these cases.
+- **UI testing found trust and usability defects:** unchecked claims could look verified in ablation runs, upload failures were not always clear, and some controls had keyboard or narrow-screen issues. These were corrected, along with handling for unknown runs and untrusted text in fetched pages.
+
+### Future work
+
+- Expand the labelled verifier examples and benchmark questions, then rerun the evaluation and verification ablation across a wider range of topics and sources.
+- Add more live end-to-end testing for search outages, conflicting sources, and different PDF, DOCX, and text uploads.
+- Continue improving retrieval and source ranking, measuring changes against the benchmark without weakening quote or citation checks.
+- Use persistent storage and backups for hosted deployments where run history and uploaded documents must survive restarts.
+- If DeepDive is opened beyond a small demo, consider per-user accounts and usage isolation; these are outside the current demo scope.
+
 ## Key design decisions
 
 See [`docs/DESIGN_DECISIONS.md`](docs/DESIGN_DECISIONS.md). In short: verification is
