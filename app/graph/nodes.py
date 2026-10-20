@@ -11,7 +11,7 @@ from app.config import get_settings
 from app.core.citation_check import build_references, enforce_citations, render_markdown
 from app.core.contradictions import detect_contradictions
 from app.core.coverage import coverage_by_subquestion, find_gaps, kept_claims
-from app.core.key_claims import fill_key_claims
+from app.core.key_claims import fill_empty_sections, fill_key_claims
 from app.core.schemas import SubQuestion, Verdict, VerdictLabel
 from app.core.scoring import source_label
 from app.core.utils import new_id, parallel_map
@@ -332,8 +332,10 @@ def synthesize(state: ResearchState) -> dict:
         min_domains=_min_domains(state),
     )
     report, added = fill_key_claims(report, kept)
+    report, filled = fill_empty_sections(report, kept)
     n = len(report.executive_summary) + sum(len(sec.sentences) for sec in report.sections)
     note = f"; code added {added} verified key claim(s) the writer left out" if added else ""
+    note += f"; code filled {filled} verified claim(s) into section(s) the writer left empty" if filled else ""
     return {"report": report, "_trail": {"summary": f"drafted report with {n} sentences from {len(kept)} claims{note}"}}
 
 

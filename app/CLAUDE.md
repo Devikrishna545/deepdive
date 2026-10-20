@@ -34,7 +34,7 @@ API surface (keep stable; the UI and the eval depend on it):
 | POST | `/api/runs/{id}/rerun` | edit & run again `{question, depth}` -> new `{run_id, replaces}` with the same files and thread (202; 409 while queued/running, allowed while stopping; access/cap guards) |
 | DELETE | `/api/runs/{id}` | delete one finished run with its events (409 while running; access code when set) |
 | POST | `/api/runs/delete` | delete several `{run_ids}` -> `{deleted, skipped}` (running runs are skipped; access code when set) |
-| POST | `/api/files` | upload PDF/DOCX/TXT for grounding; 422 for empty, scanned or damaged files; needs the access code when set |
+| POST | `/api/files` | upload PDF/DOCX/TXT for grounding; 422 for empty, scanned or damaged files; 503 if the model service can't index it; needs the access code when set |
 | GET | `/api/runs/{id}/usage` | DEV_MODE only: input/output tokens, calls, cost per agent and per step |
 | GET | `/dev/usage`, `/api/dev/usage` | DEV_MODE only: per-agent tokens across recent runs + average per run |
 

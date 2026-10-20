@@ -326,7 +326,9 @@ const sheet = document.getElementById("evidence-sheet");
 document.getElementById("sheet-close").addEventListener("click", () => sheet.close());
 sheet.addEventListener("click", (e) => { if (e.target === sheet) sheet.close(); }); // tap outside closes
 
-function openEvidence(claim, trigger) {
+function openEvidence(claimOrClaims, trigger) {
+  const claims = Array.isArray(claimOrClaims) ? claimOrClaims : [claimOrClaims];
+  const content = claims.flatMap((c, i) => (i ? [el("hr", { class: "ev-divider" }), ...evidenceContent(c)] : evidenceContent(c)));
   document.querySelectorAll(".cite[aria-pressed=true]").forEach((b) => b.setAttribute("aria-pressed", "false"));
   document.querySelectorAll(".sentence.selected").forEach((s) => s.classList.remove("selected"));
   if (trigger) {
@@ -336,11 +338,11 @@ function openEvidence(claim, trigger) {
   let box;
   if (wide.matches) {
     box = document.getElementById("evidence");
-    box.replaceChildren(...evidenceContent(claim));
+    box.replaceChildren(...content);
     box.scrollTop = 0;
   } else {
     box = document.getElementById("sheet-body");
-    box.replaceChildren(...evidenceContent(claim));
+    box.replaceChildren(...content);
     sheet.showModal();
   }
   // Bring the highlighted words into view inside their passage (the passage scrolls, not the page).
@@ -351,18 +353,27 @@ function openEvidence(claim, trigger) {
 }
 
 // ------------------------------------------------------------------ report
+// One marker per cited reference set: a sentence built from four claims of source 1 shows a single
+// "1" (not "1 1 1 1"), and the marker opens the evidence for all of those claims.
 function citeMarks(sentence) {
-  return sentence.claim_ids.map((cid) => state.claimById[cid]).filter(Boolean).map((claim) => {
+  const groups = new Map();
+  for (const claim of sentence.claim_ids.map((cid) => state.claimById[cid]).filter(Boolean)) {
     const nums = [...new Set(claim.chunks.map((c) => state.refBySource[c.source_id]).filter(Boolean))].sort((a, b) => a - b);
-    const narrowed = Boolean(claim.parent_claim_id);
-    const unchecked = isUnchecked(claim.verdict);
+    const key = nums.join(",") || "src";
+    if (!groups.has(key)) groups.set(key, { nums, claims: [] });
+    groups.get(key).claims.push(claim);
+  }
+  return [...groups.values()].map(({ nums, claims }) => {
+    const narrowed = claims.some((c) => c.parent_claim_id);
+    const unchecked = claims.every((c) => isUnchecked(c.verdict));
+    const count = claims.length > 1 ? ` (${claims.length} claims)` : "";
     return el("button", {
       type: "button",
       class: `cite${unchecked ? " unverified" : narrowed ? " narrowed" : ""}`,
       "aria-pressed": "false",
-      "aria-label": `Show evidence from source ${nums.join(", ") || ""}`.trim(),
-      title: unchecked ? "Not verified: verification was off for this run" : narrowed ? "Verified after narrowing to what the source says" : "Verified against the cited source",
-      onclick: (e) => openEvidence(claim, e.currentTarget),
+      "aria-label": `Show evidence${nums.length ? ` from source ${nums.join(", ")}` : ""}${count}`,
+      title: (unchecked ? "Not verified: verification was off for this run" : narrowed ? "Verified after narrowing to what the source says" : "Verified against the cited source") + count,
+      onclick: (e) => openEvidence(claims, e.currentTarget),
     }, nums.length ? nums.join(",") : "src");
   });
 }
@@ -452,6 +463,8 @@ function setFilter(filter) {
 // ------------------------------------------------------------------ summary chips + load
 function utc(iso) { return new Date(/Z|[+-]\d\d:\d\d$/.test(iso) ? iso : `${iso}Z`); } // stored times are UTC
 
+function sourcesLabel(n) { return `${n} source${n === 1 ? "" : "s"}`; }
+
 function renderMeta() {
   const all = state.claims.claims;
   const kept = all.filter((c) => c.kept).length;
@@ -465,7 +478,7 @@ function renderMeta() {
     document.getElementById("run-meta").append(
       el("span", { class: "pill", title: NOT_VERIFIED_NOTE }, icon("circle-alert", "icon-sm"), "Verification off"),
       el("span", { class: "pill", title: "Claims in this run, none checked" }, icon("list-checks", "icon-sm"), `${all.length} unchecked claims`),
-      el("span", { class: "pill pill-sky", title: "Sources cited in the report" }, icon("globe", "icon-sm"), `${state.report.references.length} sources`),
+      el("span", { class: "pill pill-sky", title: "Sources cited in the report" }, icon("globe", "icon-sm"), sourcesLabel(state.report.references.length)),
       took);
     return;
   }
@@ -474,7 +487,7 @@ function renderMeta() {
     el("span", { class: "pill pill-mint", title: "Claims that passed verification" }, icon("shield-check", "icon-sm"), `${kept} verified`),
     el("button", { type: "button", class: "pill pill-rose", title: "Show the claims the verifier removed",
       onclick: () => { showTab("claims"); setFilter("rejected"); } }, icon("eraser", "icon-sm"), `${removed} removed`),
-    el("span", { class: "pill pill-sky", title: "Sources cited in the report" }, icon("globe", "icon-sm"), `${state.report.references.length} sources`),
+    el("span", { class: "pill pill-sky", title: "Sources cited in the report" }, icon("globe", "icon-sm"), sourcesLabel(state.report.references.length)),
     took);
 }
 

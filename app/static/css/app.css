@@ -430,3 +430,4 @@ dialog.sheet[open] { animation: sheet-up .22s ease-out; }
 .web-toggle:has(input:focus-visible) { outline: 2px solid var(--lavender-ink); outline-offset: 2px; }
 .edit-run .web-toggle { height: 34px; font-size: .86rem; }
 .web-hint { margin-top: 10px; color: var(--muted); font-size: .86rem; }
+.ev-divider { border: 0; border-top: 1px dashed var(--line); margin: 18px 0; }

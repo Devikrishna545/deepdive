@@ -80,7 +80,8 @@ app/tools/           search, fetch, chunker, semantic (hybrid ranking via Mesh e
 app/db/              SQLModel tables + repository (all DB access)
 app/services/        run_service: API <-> graph bridge, background runs
 evaluation/          test sets, metrics, runner, results/ (committed)
-scripts/             cli, smoke_mesh, offline_demo, check_mesh_only
+scripts/             cli, smoke_mesh, offline_demo, check_mesh_only, deploy_hf_space
+Dockerfile           container for Hugging Face Spaces / any host (steps: docs/DEPLOY.md)
 tests/               offline tests with FakeMesh (no network, no keys)
 ```
 

@@ -151,6 +151,8 @@ type it once on the home page; reading reports stays open), and `MAX_RUNS_PER_DA
 spend (extra runs get a 429 with a plain message). Keep `DEV_MODE=false`. The app sends security
 headers (CSP, no framing, `nosniff`, HSTS behind HTTPS) and shows a 404 page for unknown runs.
 `requirements.txt` pins the exact versions behind the published results (Python 3.11-3.14).
+Free hosting on Hugging Face Spaces (Docker) takes one script and three secrets: see
+[docs/DEPLOY.md](docs/DEPLOY.md).
 
 ## Self-evaluation
 

@@ -61,3 +61,30 @@ def fill_key_claims(report: Report, kept: list[Claim]) -> tuple[Report, int]:
         added += len(extra)
         sections.append(sec.model_copy(update={"sentences": sec.sentences + extra}) if extra else sec)
     return report.model_copy(update={"sections": sections}), added
+
+
+MAX_FILLED_PER_SECTION = 3
+
+
+def fill_empty_sections(report: Report, kept: list[Claim]) -> tuple[Report, int]:
+    """A section the writer left empty although its sub-question has verified claims gets up to
+    MAX_FILLED_PER_SECTION of them, as written in the claim (claims with figures first, then in
+    drafting order), each cited to itself. The coverage gate had counted these claims ("coverage
+    ok"), so an empty section contradicted the audit trail. Stored runs: 11 of the last 40 reports
+    had a section left empty with 3-10 verified claims behind it (gpt-4o-mini skipped it).
+    Claims already cited elsewhere in the report are not repeated."""
+    sentences = report.executive_summary + [s for sec in report.sections for s in sec.sentences]
+    cited = {cid for s in sentences for cid in s.claim_ids}
+    added = 0
+    sections = []
+    for sec in report.sections:
+        if sec.sentences:
+            sections.append(sec)
+            continue
+        own = [c for c in kept if c.sub_question_id == sec.sub_question_id and c.id not in cited]
+        own.sort(key=lambda c: not figures(c.text))  # stable: figures first, drafting order kept
+        extra = [ReportSentence(text=c.text, claim_ids=[c.id]) for c in own[:MAX_FILLED_PER_SECTION]]
+        cited.update(c.id for c in own[:MAX_FILLED_PER_SECTION])
+        added += len(extra)
+        sections.append(sec.model_copy(update={"sentences": extra}) if extra else sec)
+    return report.model_copy(update={"sections": sections}), added

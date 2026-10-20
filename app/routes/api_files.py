@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import shutil
 from pathlib import Path
 
@@ -13,6 +14,7 @@ from app.llm.billing import InsufficientBalance, require_balance
 from app.routes.guards import require_access_code
 from app.tools.documents import ALLOWED_SUFFIXES, DocumentError, ingest_document
 
+log = logging.getLogger(__name__)
 router = APIRouter()
 
 MAX_BYTES = 20 * 1024 * 1024
@@ -41,4 +43,9 @@ def upload_file(file: UploadFile) -> dict:
     except DocumentError as exc:
         dest.unlink(missing_ok=True)
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:  # indexing needs Mesh embeddings: an outage must not surface as a raw 500
+        log.warning("indexing %s failed: %s: %s", name, type(exc).__name__, exc)
+        dest.unlink(missing_ok=True)
+        raise HTTPException(status_code=503, detail=f"Could not index {name} right now: the AI model service "
+                            "did not respond. Please try again in a minute.") from exc
     return {"file_id": doc.id, "filename": doc.filename, "pages": doc.pages}

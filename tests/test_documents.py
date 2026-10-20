@@ -36,3 +36,21 @@ def test_upload_api_returns_422_not_500(fake_world):
     assert bad.status_code == 422 and "Could not read" in bad.json()["detail"]
     assert empty.status_code == 422 and "no readable text" in empty.json()["detail"]
     assert ok.status_code == 201
+
+
+def test_upload_when_the_model_service_is_down_is_a_clear_503(fake_world, monkeypatch, tmp_path):
+    from fastapi.testclient import TestClient
+
+    from app import create_app
+
+    def down(*a, **k):
+        raise ConnectionError("Connection error.")
+
+    monkeypatch.setattr(fake_world, "embed", down)
+    with TestClient(create_app()) as c:
+        r = c.post("/api/files", files={"file": ("notes.txt", b"A note long enough to be kept as a passage of text.")})
+    assert r.status_code == 503 and "try again" in r.json()["detail"]
+    from pathlib import Path
+
+    from app.config import get_settings
+    assert not any(Path(get_settings().upload_dir).glob("up_*"))  # the temporary file is removed

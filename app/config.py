@@ -65,6 +65,7 @@ class Settings(BaseSettings):
     # Reading finished reports is always open.
     run_access_code: str = ""
     max_runs_per_day: int = 0
+    frame_ancestors: str = ""  # sites allowed to embed the app, e.g. "https://huggingface.co" for HF Spaces
 
     # Storage
     database_url: str = "sqlite:///data/deepdive.db"

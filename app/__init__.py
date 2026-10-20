@@ -14,6 +14,8 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 
+from app.config import get_settings
+
 BASE_DIR = Path(__file__).parent
 
 # Pages load only our own scripts and Google Fonts. Inline scripts are allowed for the two tiny
@@ -21,7 +23,7 @@ BASE_DIR = Path(__file__).parent
 # HTML (el() uses textContent), which is the real XSS defence.
 CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
        "font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data:; connect-src 'self'; "
-       "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'")
+       "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors {ancestors}")
 SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
@@ -52,10 +54,16 @@ def create_app() -> FastAPI:
     @app.middleware("http")
     async def security_headers(request: Request, call_next):
         response = await call_next(request)
+        # FRAME_ANCESTORS (e.g. "https://huggingface.co"): the only sites allowed to show the app in
+        # a frame. Hugging Face Spaces shows apps inside an iframe on huggingface.co. Default: none.
+        allowed = get_settings().frame_ancestors.split()
         for name, value in SECURITY_HEADERS.items():
+            if name == "X-Frame-Options" and allowed:
+                continue  # X-Frame-Options cannot name another site; the CSP rule below does
             response.headers.setdefault(name, value)
         if not request.url.path.startswith(API_DOC_PATHS):
-            response.headers.setdefault("Content-Security-Policy", CSP)
+            ancestors = " ".join(["'self'", *allowed]) if allowed else "'none'"
+            response.headers.setdefault("Content-Security-Policy", CSP.format(ancestors=ancestors))
         if request.headers.get("x-forwarded-proto", request.url.scheme) == "https":
             response.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
         return response
