@@ -1,25 +1,28 @@
-# Deploying DeepDive (free tier)
+# Deploying DeepDive
 
-Recommended: **Hugging Face Spaces, Docker SDK, free CPU** (2 vCPU, 16 GB RAM). It gives a stable
-public URL, keeps secrets in the Space settings, and runs the same `Dockerfile` as any other host.
+DeepDive is a FastAPI app served in a Docker container. Hugging Face's current Spaces
+requirements say Docker and Gradio Spaces need a paid plan to create: PRO for personal accounts,
+or Team/Enterprise for organizations. CPU Basic has no hourly hardware charge, but that does not
+remove the plan requirement. Static Spaces are free, but cannot host this server-side app as-is.
 
-| | Hugging Face Spaces (free) | Render (free) |
-| --- | --- | --- |
-| RAM | 16 GB | 512 MB |
-| Sleeps after | 48 h without visits (wakes in ~1 min) | 15 min (slow first load) |
-| Disk | resets on restart (run history is lost) | resets on restart |
-| Secrets | Space settings | dashboard env vars |
+When eligible, Hugging Face Spaces with the Docker SDK provides a public URL, Space-managed
+secrets, and runs the same `Dockerfile` as other container hosts. CPU Basic provides 2 vCPU and
+16 GB RAM. Its disk is not persistent, so local SQLite run history can be lost on restart.
 
-Both free tiers lose the SQLite file on restart: judges see their own runs, not a history.
+If you do not want a Hugging Face paid plan, use another container host; see [Other hosts](#other-hosts)
+and check the provider's current pricing and storage behavior.
 
-## 1. Publish the Space (about 5 minutes)
+## 1. Publish the Space
 
 ```bash
 pip install huggingface_hub
 export HF_TOKEN=hf_...                  # huggingface.co/settings/tokens, "Write" access
-python scripts/deploy_hf_space.py --space <your-hf-username>/deepdive --dry-run   # see what goes up
-python scripts/deploy_hf_space.py --space <your-hf-username>/deepdive
+python scripts/deploy_hf_space.py --space OWNER/deepdive --dry-run   # see what goes up
+python scripts/deploy_hf_space.py --space OWNER/deepdive
 ```
+
+Replace `OWNER` with your Hugging Face username or organization name; do not include angle
+brackets. For a personal account, make sure its PRO plan is active before creating the Space.
 
 The script uploads only files tracked by git (never `.env` or `data/`), uses
 `deploy/huggingface/README.md` as the Space card, and sets these Space **variables**:
